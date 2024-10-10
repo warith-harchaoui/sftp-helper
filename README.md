@@ -25,6 +25,8 @@ pip install git+ssh://git@github.com/warith-harchaoui/sftp-helper.git@main
 ## Write your own configuration file
 
 You have to write your own `sftp_config.json` file or `sftp_config.yaml` file:
+
+_JSON_
 ```json
 {
     "sftp_host": "<sftp_host>",
@@ -35,6 +37,8 @@ You have to write your own `sftp_config.json` file or `sftp_config.yaml` file:
 }
 ```
 or
+
+_YAML_
 ```yaml
 sftp_host: "<sftp_host>"
 sftp_login: "<sftp_login>"
