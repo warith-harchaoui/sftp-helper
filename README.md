@@ -22,7 +22,7 @@ We can recommand python environments. Check this link if you don't know how
 
 
 ```bash
-pip install git+ssh://git@github.com/warith-harchaoui/sftp-helper.git@main
+pip install git+https://github.com/warith-harchaoui/sftp-helper.git@main
 ```
 
 ## Write your own configuration file
