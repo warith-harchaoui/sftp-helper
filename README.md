@@ -24,7 +24,7 @@ pip install git+ssh://git@github.com/warith-harchaoui/sftp-helper.git@main
 
 ## Write your own configuration file
 
-You have to write your own `sftp_config.json` file:
+You have to write your own `sftp_config.json` file or `sftp_config.yaml` file:
 ```json
 {
     "sftp_host": "<sftp_host>",
@@ -33,6 +33,14 @@ You have to write your own `sftp_config.json` file:
     "sftp_https": "<sftp_https>",
     "sftp_destination_path": "<sftp_destination_path>",
 }
+```
+or
+```yaml
+sftp_host: "<sftp_host>"
+sftp_login: "<sftp_login>"
+sftp_passwd: "<sftp_passwd>"
+sftp_https: "<sftp_https>"
+sftp_destination_path: "<sftp_destination_path>"
 ```
 
 In which you can find these information in your favorite FTP tool (mine is FileZilla):
