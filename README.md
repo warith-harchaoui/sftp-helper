@@ -72,7 +72,7 @@ url = credentials["sftp_https"] + "/" + local_file
 
 u = sftph.upload(local_file, credentials, remote_file)
 
-osh.check(, msg=f'Upload of {local_file} to {u} failed')
+osh.check(not(u is None), msg=f'Upload of {local_file} to {u} failed')
 
 print(f"Upload of {local_file} to {u} is successful" if not(u is None) )
 
