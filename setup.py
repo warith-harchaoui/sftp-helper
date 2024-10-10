@@ -22,6 +22,6 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'pysftp',  # Add pysftp for SFTP handling
-        'os-helper @ git+ssh://git@github.com/warith-harchaoui/os-helper.git@main'
+        'os-helper @ git+https://github.com/warith-harchaoui/os-helper.git@main'
     ]
 )
