@@ -10,8 +10,7 @@ This toolbox requires:
 
 [![logo](logo.png)](https://harchaoui.org/warith/ai-helpers)
 
-SFTP Helper is a Python libraty that provides utility function for working with SFTP servers
-
+SFTP Helper is a Python library that provides utility function for working with SFTP servers once you specified your SSH Key Credentials.
 
 # Installation
 
