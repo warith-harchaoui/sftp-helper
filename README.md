@@ -78,7 +78,7 @@ print(f"Upload of {local_file} to {u} is successful" if not(u is None) else f"Fa
 
 url_exist = osh.is_working_url(url)
 
-print("Url is working:\n\t{url}" if url_exist)
+print("Url is working:\n\t{url}" if url_exist else f"Failed URL:\n\t{url}")
 
 ```
 
