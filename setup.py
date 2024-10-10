@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="sftp-helper",
-    version="1.1.0",
+    version="0.1.0",
     author="Warith Harchaoui, Mohamed Chelali and Bachir Zerroug",
     author_email="warith.harchaoui@gmail.com", 
     description="SFTP Helper is a Python libraty that provides utility function for working with SFTP servers",
