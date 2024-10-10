@@ -51,7 +51,7 @@ In which you can find these information in your favorite FTP tool (mine is FileZ
 
 ## Usage
 
-Here are an example of how to use OS helper:
+Here are an example of how to use SFTP helper **which cannot work without a well written `path/to/sftp_config.json`** :
 ```python
 import sftp_helper as sftph
 import os_helper as osh
