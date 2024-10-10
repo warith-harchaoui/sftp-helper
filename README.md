@@ -74,7 +74,7 @@ u = sftph.upload(local_file, credentials, remote_file)
 
 osh.check(not(u is None), msg=f'Upload of {local_file} to {u} failed')
 
-print(f"Upload of {local_file} to {u} is successful" if not(u is None) )
+print(f"Upload of {local_file} to {u} is successful" if not(u is None) else f"Failed upload of {local_file} to {u}")
 
 url_exist = osh.is_working_url(url)
 
