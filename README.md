@@ -27,7 +27,7 @@ pip install git+https://github.com/warith-harchaoui/sftp-helper.git@main
 
 ## Write your own configuration file
 
-You have to write your own `sftp_config.json` file or `sftp_config.yaml` file:
+You have to write your own `sftp_config.json` file or `sftp_config.yaml` file or environment variables (in case you don't provide neither `yaml` nor `json` files):
 
 _JSON_
 ```json
@@ -49,12 +49,24 @@ sftp_passwd: "<sftp_passwd>"
 sftp_https: "<sftp_https>"
 sftp_destination_path: "<sftp_destination_path>"
 ```
+or
+
+_ENVIRONMENT VARIABLES_
+```bash
+SFTP_HOST="<sftp_host>" \
+SFTP_LOGIN="<sftp_login>" \
+SFTP_PASSWD="<sftp_passwd>" \
+SFTP_HTTPS="<sftp_https>" \
+SFTP_DESTINATION_PATH="<sftp_destination_path>" \
+python <your_python_script>
+```
 
 In which you can find these information in your favorite FTP tool (mine is FileZilla):
   + `<sftp_host>` is the server path `sftp.` ...
   + `<sftp_login>` and `<sftp_passwd>` that you use in FileZilla
   + `<sftp_destination_path>` is the remote folder path
   + `<sftp_https>` corresponds to the web URL of `<sftp_destination_path>`
+  + <your_python_script> is your python script :)
 
 ## Usage
 
