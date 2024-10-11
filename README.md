@@ -68,7 +68,7 @@ local_file = "example.txt"
 with open(local_file, "wt") as fout:
     fout.write("A small example of text")
 
-credentials = sftph.credentials("path/to/sftp_config.json")
+credentials = sftph.credentials("path/to/sftp_config.json") # or path/to/sftp_config.yaml
 
 remote_file = credentials["sftp_destination_path"] + "/" + local_file
 url = credentials["sftp_https"] + "/" + local_file
