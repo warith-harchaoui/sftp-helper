@@ -27,7 +27,7 @@ pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harch
 
 ## Write your own configuration file
 
-You have to write your own `sftp_config.json` file or `sftp_config.yaml` file or environment variables (in case you don't provide neither `yaml` nor `json` files):
+You have to write your own `sftp_config.json` file or `sftp_config.yaml` file or environment variables (in case you don't provide neither `yaml` nor `json` files) or `.env` file:
 
 _JSON_
 ```json
@@ -60,6 +60,16 @@ SFTP_HTTPS="<sftp_https>" \
 SFTP_DESTINATION_PATH="<sftp_destination_path>" \
 python <your_python_script>
 ```
+or
+
+_.env_
+```
+SFTP_HOST                = <sftp_host>
+SFTP_LOGIN               = <sftp_login>
+SFTP_PASSWD              = <sftp_passwd>
+SFTP_HTTPS               = <sftp_https>
+SFTP_DESTINATION_PATH    = <sftp_destination_path>
+```
 
 In which you can find these information in your favorite FTP tool (mine is FileZilla):
   + `<sftp_host>` is the server path `sftp.` ...
@@ -81,7 +91,7 @@ with open(local_file, "wt") as fout:
     fout.write("A small example of text")
 
 credentials = sftph.credentials("path/to/sftp_config.json") # or path/to/sftp_config.yaml
-# or nothing in order to fall back to environment variables
+# or nothing in order to fall back on .env or environment variables
 
 remote_file = credentials["sftp_destination_path"] + "/" + local_file
 url = credentials["sftp_https"] + "/" + local_file
