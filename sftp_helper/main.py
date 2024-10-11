@@ -1,199 +1,264 @@
-"""SFTP Helper"""
+"""
+SFTP Helper
 
-# Authors: Warith Harchaoui <warith.harchaoui@deraison.ai>
+This module provides functions to interact with an SFTP server, allowing users to perform file uploads, downloads, 
+and deletions, as well as to check file existence remotely. The module relies on pysftp for SFTP operations and 
+os_helper for auxiliary tasks.
 
-from hashlib import new
-import json
+Authors:
+- [Warith Harchaoui](https://harchaoui.org/warith)
+- [Mohamed Chelali](https://mchelali.github.io)
+- [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug)
+"""
+
 import pysftp
-
-
 import os_helper
 
 
 def credentials(config_path: str) -> dict:
-    """sftp_credentials function gets SFTP credentials from file or folder path
-
-    Args:
-        config_path (str): File or folder config path
-
-    Returns:
-        dict: Credentials Dictionary
     """
-    keys = ['sftp_host', "sftp_login", "sftp_passwd",
-            "sftp_destination_path", "sftp_https"]  # mandatory keys
-    sftp_cred = os_helper.get_config(
-        config_path, keys=keys, config_type="SFTP")
-    return sftp_cred
+    Retrieve SFTP credentials from a configuration file or folder.
+
+    This function loads SFTP credentials from a given config path (file or folder). 
+    It expects certain mandatory keys in the configuration file.
+
+    Parameters
+    ----------
+    config_path : str
+        The file or folder path containing the SFTP configuration.
+
+    Returns
+    -------
+    dict
+        A dictionary containing SFTP credentials.
+
+    Raises
+    ------
+    SystemExit
+        If the configuration file does not contain the required keys (or not present in capitals in the environment variables).
+    """
+    keys = ['sftp_host', 'sftp_login', 'sftp_passwd', 'sftp_destination_path', 'sftp_https']
+    return os_helper.get_config(config_path, keys=keys, config_type="SFTP")
 
 
 def get_client_sftp(cred: dict):
-    """get_client_sftp returns an SFTP client based on the SFTP credentials.
-    This is just a 'with' wrapper over the used pysftp toolbox
+    """
+    Establish an SFTP connection using the provided credentials.
 
-    Example:
-    $ local_path = 'file.txt'
-    $ remote_path = 'sftp://sftp.server/file.txt'
-    $ new_local_path = 'new_file.txt'
-    $ with get_client_sftp(cred) as sftp:
-    $     sftp.put(local, remote_path) # upload
-    $     sftp.get(remote_path, new_local_path) # download
-    $     sftp.remove(remote_path) # remote deletion
+    This function wraps the pysftp Connection in a 'with' statement for safe usage.
+    It disables host key checking for simplicity, assuming trusted connections.
 
-    Args:
-        cred (dict): Credentials Dictionary for establishing a connection
+    Parameters
+    ----------
+    cred : dict
+        Dictionary containing SFTP credentials (host, login, password, etc.).
 
-    Returns:
-        res: an SFTP client to be used within the 'with' paradigm
+    Yields
+    ------
+    pysftp.Connection
+        The SFTP client connection for use within the 'with' context.
+
+    Example
+    -------
+    >>> with get_client_sftp(cred) as sftp:
+    ...     sftp.put('local_file.txt', 'remote_file.txt')
+    ...     sftp.get('remote_file.txt', 'local_copy.txt')
+
+    Raises
+    ------
+    SystemExit
+        If the SFTP connection fails.
     """
     try:
-    # if True:
         cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None
+        cnopts.hostkeys = None  # Disable host key checking for simplicity
         client = pysftp.Connection(
-            cred["sftp_host"], username=cred["sftp_login"], cnopts=cnopts, password=cred["sftp_passwd"])
+            cred["sftp_host"], username=cred["sftp_login"], cnopts=cnopts, password=cred["sftp_passwd"]
+        )
         return client
-    except:
-        msg = 'Try on your terminal:\nsftp sftp://%s@%s\nonce' % (
-            cred["sftp_login"], cred['sftp_host'])
-        os_helper.check(
-            False, msg='Sftp client does not work:\n%s' % (msg))
-
+    except Exception as err:
+        os_helper.error(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
 
 def strip_sftp_path(sftp_address: str, cred: dict) -> str:
-    """strip_sftp_path strips sftp path
+    """
+    Remove the SFTP protocol and host from an SFTP address.
 
-    Example:
-    sftp://host/folder/file -> /folder/file
+    This function strips the 'sftp://' prefix and the host from the full SFTP path, 
+    returning the relative path on the remote server.
 
-    Args:
-        sftp_address (str): sftp path
-        cred (dict): SFTP credentials dictionary
+    Parameters
+    ----------
+    sftp_address : str
+        The full SFTP path (e.g., sftp://host/path/to/file).
+    cred : dict
+        SFTP credentials dictionary.
 
-    Returns:
-        str: stripped ftp path
+    Returns
+    -------
+    str
+        The stripped SFTP path (e.g., /path/to/file).
+
+    Example
+    -------
+    >>> strip_sftp_path('sftp://example.com/folder/file.txt', cred)
+    '/folder/file.txt'
     """
     return sftp_address.replace('sftp://', '').replace(cred["sftp_host"], '')
 
 
 def remote_file_exists(sftp_address: str, cred: dict) -> bool:
-    """remote_file_exists boolean function for existing remote SFTP file
-
-    Args:
-        sftp_address (str): sftp path
-        cred (dict): SFTP credentials dictionary
-
-    Returns:
-        bool: whether the remote file exists or not
     """
-    p = strip_sftp_path(sftp_address, cred)
-    res = False
+    Check if a remote file exists on the SFTP server.
+
+    Parameters
+    ----------
+    sftp_address : str
+        The full SFTP path to the file.
+    cred : dict
+        SFTP credentials dictionary.
+
+    Returns
+    -------
+    bool
+        True if the remote file exists, False otherwise.
+
+    Example
+    -------
+    >>> remote_file_exists('sftp://example.com/folder/file.txt', cred)
+    True
+    """
+    remote_path = strip_sftp_path(sftp_address, cred)
     try:
         with get_client_sftp(cred) as sftp:
-            res = sftp.exists(p)
-            os_helper.info(
-                'sftp file %s existence checked: %s' % (sftp_address, 'True' if res else 'False'))
-    except:
-        pass
-    if not(res):
-        os_helper.info(
-            'sftp file %s does not exist' % sftp_address)
-    else:
-        os_helper.info('sftp file exists')
-    return res
+            exists = sftp.exists(remote_path)
+            os_helper.info(f"SFTP file {sftp_address} existence check: {'True' if exists else 'False'}")
+            return exists
+    except Exception as err:
+        os_helper.error(f"Failed to check SFTP file existence for :\n\t{sftp_address}.\nError:\n\t{str(err)}")
+    return False
 
 
-def delete(sftp_address: str, cred: dict, check_exists=False) -> bool:
-    """delete function removes a remote an SFTP file and returns True for success
-
-    Args:
-        sftp_address (str): sftp path to be removed
-        cred (dict): SFTP credentials dictionary
-
-    Returns:
-        bool: True for successful deletion (including when the file was already deleted)
+def delete(sftp_address: str, cred: dict, check_exists: bool = False) -> bool:
     """
-    remote_exists = remote_file_exists(sftp_address, cred)
-    if check_exists and not(remote_exists):
-        os_helper.info(
-            'sftp remote file %s does not exist, so there is no need to remove it' % sftp_address, error_code=True)
-    if not(remote_exists):
+    Delete a file from the remote SFTP server.
+
+    Parameters
+    ----------
+    sftp_address : str
+        The full SFTP path to the file.
+    cred : dict
+        SFTP credentials dictionary.
+    check_exists : bool, optional
+        If True, the function will first check if the file exists before attempting to delete it.
+
+    Returns
+    -------
+    bool
+        True if the file was successfully deleted or didn't exist. False otherwise.
+
+    Example
+    -------
+    >>> delete('sftp://example.com/folder/file.txt', cred)
+    True
+    """
+    if check_exists and not remote_file_exists(sftp_address, cred):
+        os_helper.info(f"SFTP remote file {sftp_address} does not exist, skipping deletion.")
         return True
-    p = strip_sftp_path(sftp_address, cred)
+
+    remote_path = strip_sftp_path(sftp_address, cred)
     try:
         with get_client_sftp(cred) as sftp:
-            sftp.remove(p)
-            os_helper.check(not(remote_file_exists(sftp_address, cred)),
-                            msg='sftp remote file %s is not removed inspite of your removal attempt' % sftp_address)
-            os_helper.info('sftp successful removal of %s' %
-                           (p))
+            sftp.remove(remote_path)
+            os_helper.check(
+                not remote_file_exists(sftp_address, cred),
+                msg=f"Failed to delete {sftp_address} on SFTP server."
+            )
+            os_helper.info(f"SFTP file {sftp_address} successfully deleted.")
             return True
-    except IOError as err:
-        os_helper.info(err)
-    os_helper.info('sftp failed removal of %s' %
-                   (p), error=True)
+    except Exception as err:
+        os_helper.error(f"Error deleting SFTP file:\n\t{sftp_address}.\nError:\n\t{str(err)}")
     return False
 
 
 def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
-    """upload function uploads a local file to remote sftp path
-
-    Args:
-        local_path (str): origin local file
-        cred (dict): SFTP credentials dictionary
-        sftp_address (str): destination remote file, if empty ("") it is a random file name with the right extension. Defaults to ""
-
-    Returns:
-        str: Remote remote path if successful and None otherwise
     """
-    remote_path = sftp_address
-    if os_helper.emptystring(remote_path):
+    Upload a local file to the remote SFTP server.
+
+    If no destination path is provided, a random filename based on the file's hash will be used.
+
+    Parameters
+    ----------
+    local_path : str
+        Path to the local file.
+    cred : dict
+        SFTP credentials dictionary.
+    sftp_address : str, optional
+        Remote SFTP destination path. If not provided, a random path is generated.
+
+    Returns
+    -------
+    str
+        The remote path if upload is successful. None otherwise.
+
+    Example
+    -------
+    >>> upload('local_file.txt', cred, 'sftp://example.com/folder/file.txt')
+    'sftp://example.com/folder/file.txt'
+    """
+    if os_helper.emptystring(sftp_address):
         _, _, ext = os_helper.folder_name_ext(local_path)
         h = os_helper.hashfile(local_path, hash_content=True, date=True)
-        remote_path = '%s/%s.%s' % (cred["sftp_destination_path"], h, ext)
+        sftp_address = f"{cred['sftp_destination_path']}/{h}.{ext}"
 
-    delete(remote_path, cred)
-    p = strip_sftp_path(remote_path, cred)
+    delete(sftp_address, cred)
+
+    remote_path = strip_sftp_path(sftp_address, cred)
     try:
         with get_client_sftp(cred) as sftp:
-            sftp.put(local_path, p, preserve_mtime=True, confirm=True)
-            os_helper.check(remote_file_exists(remote_path, cred),
-                            msg='File %s is not uploaded inspite of your upload attempt' % remote_path)
-            os_helper.info('sftp upload successful from %s to %s' %
-                           (local_path, p))
-            return remote_path
-    except (IOError, OSError) as err:
-        os_helper.info(err)
-    os_helper.info('sftp upload failed from %s to %s' %
-                   (local_path, p), error=True)
+            sftp.put(local_path, remote_path, preserve_mtime=True, confirm=True)
+            os_helper.check(remote_file_exists(sftp_address, cred), msg=f"Upload failed for {sftp_address}")
+            os_helper.info(f"Upload successful: {local_path} -> {sftp_address}")
+            return sftp_address
+    except Exception as err:
+        os_helper.error(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
     return None
 
 
 def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
-    """upload function uploads a remote sftp file to local file
-
-
-    Args:
-        sftp_address (str): origin remote file
-        cred (dict): SFTP credentials dictionary
-        local_path (str): destination local file
-
-    Returns:
-        str: Remote local path if successful and None otherwise
     """
-    p = strip_sftp_path(sftp_address, cred)
-    download_path = local_path
-    if os_helper.emptystring(download_path):
-        download_path = p.split('/')[-1]
+    Download a file from the remote SFTP server to a local path.
+
+    If no local path is provided, the filename will be based on the remote file's basename.
+
+    Parameters
+    ----------
+    sftp_address : str
+        The full SFTP path to the remote file.
+    cred : dict
+        SFTP credentials dictionary.
+    local_path : str, optional
+        The local destination path. If not provided, defaults to the remote file's basename.
+
+    Returns
+    -------
+    str
+        The local path if download is successful. None otherwise.
+
+    Example
+    -------
+    >>> download('sftp://example.com/folder/file.txt', cred, 'local_file.txt')
+    'local_file.txt'
+    """
+    remote_path = strip_sftp_path(sftp_address, cred)
+    if os_helper.emptystring(local_path):
+        local_path = os.path.basename(remote_path)
+
     try:
         with get_client_sftp(cred) as sftp:
-            sftp.get(p, download_path, preserve_mtime=True)
-        os_helper.checkfile(download_path, msg='sftp download failed')
-        os_helper.info('sftp download successful from %s to %s' %
-                       (p, download_path))
-        return download_path
+            sftp.get(remote_path, local_path, preserve_mtime=True)
+        os_helper.checkfile(local_path, msg=f"Download failed for {sftp_address}")
+        os_helper.info(f"Download successful: {sftp_address} -> {local_path}")
+        return local_path
     except (IOError, OSError) as err:
-        os_helper.info(err)
-    os_helper.info('sftp download failed from %s to %s' %
-                   (p, local_path), error=True)
+        os_helper.error(f"Download failed: {sftp_address} -> {local_path}. Error: {str(err)}")
     return None
-
