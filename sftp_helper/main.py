@@ -9,6 +9,10 @@ Authors:
 - [Warith Harchaoui](https://harchaoui.org/warith)
 - [Mohamed Chelali](https://mchelali.github.io)
 - [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug)
+
+Dependencies:
+- pysftp: Python SFTP client, https://pypi.org/project/pysftp/
+- os_helper: Custom helper functions for file and system operations
 """
 
 import pysftp
