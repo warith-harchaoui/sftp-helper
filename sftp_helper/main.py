@@ -225,7 +225,6 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
             return sftp_address
     except Exception as err:
         os_helper.error(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
-    return None
 
 
 def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
@@ -265,4 +264,3 @@ def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
         return local_path
     except (IOError, OSError) as err:
         os_helper.error(f"Download failed: {sftp_address} -> {local_path}. Error: {str(err)}")
-    return None
