@@ -42,7 +42,7 @@ def credentials(config_path: str) -> dict:
         If the configuration file does not contain the required keys (or not present in capitals in the environment variables).
     """
     keys = ['sftp_host', 'sftp_login', 'sftp_passwd', 'sftp_destination_path', 'sftp_https']
-    return os_helper.get_config(config_path, keys=keys, config_type="SFTP")
+    return os_helper.get_config(keys, config_path, config_type="SFTP")
 
 
 def get_client_sftp(cred: dict):
