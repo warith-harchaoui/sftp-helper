@@ -19,7 +19,7 @@ import pysftp
 import os_helper
 
 
-def credentials(config_path: str) -> dict:
+def credentials(config_path: str=None) -> dict:
     """
     Retrieve SFTP credentials from a configuration file or folder.
 
@@ -42,10 +42,7 @@ def credentials(config_path: str) -> dict:
         If the configuration file does not contain the required keys (or not present in capitals in the environment variables).
     """
     keys = ['sftp_host', 'sftp_login', 'sftp_passwd', 'sftp_destination_path', 'sftp_https']
-    d = os_helper.get_config(keys, config_path, config_type="SFTP")
-    if not(d["sftp_destination_path"].startswith("/")):
-        d["sftp_destination_path"] = "/" + d["sftp_destination_path"]
-    return 
+    return os_helper.get_config(keys, "SFTP", config_path)
 
 
 def get_client_sftp(cred: dict):
@@ -145,7 +142,7 @@ def remote_file_exists(sftp_address: str, cred: dict) -> bool:
     return False
 
 
-def delete(sftp_address: str, cred: dict, check_exists: bool = False) -> bool:
+def delete(sftp_address: str, cred: dict) -> bool:
     """
     Delete a file from the remote SFTP server.
 
@@ -155,8 +152,6 @@ def delete(sftp_address: str, cred: dict, check_exists: bool = False) -> bool:
         The full SFTP path to the file.
     cred : dict
         SFTP credentials dictionary.
-    check_exists : bool, optional
-        If True, the function will first check if the file exists before attempting to delete it.
 
     Returns
     -------
@@ -168,7 +163,7 @@ def delete(sftp_address: str, cred: dict, check_exists: bool = False) -> bool:
     >>> delete('sftp://example.com/folder/file.txt', cred)
     True
     """
-    if check_exists and not remote_file_exists(sftp_address, cred):
+    if remote_file_exists(sftp_address, cred):
         os_helper.info(f"SFTP remote file {sftp_address} does not exist, skipping deletion.")
         return True
 
