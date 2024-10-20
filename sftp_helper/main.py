@@ -107,7 +107,10 @@ def strip_sftp_path(sftp_address: str, cred: dict) -> str:
     >>> strip_sftp_path('sftp://example.com/folder/file.txt', cred)
     '/folder/file.txt'
     """
-    return sftp_address.replace('sftp://', '').replace(cred["sftp_host"], '')
+    a = sftp_address.replace('sftp://', '').replace(cred["sftp_host"], '')
+    if not(a.startswith("/")):
+        a = "/" + a
+    return a
 
 
 def remote_file_exists(sftp_address: str, cred: dict) -> bool:
@@ -163,11 +166,12 @@ def delete(sftp_address: str, cred: dict) -> bool:
     >>> delete('sftp://example.com/folder/file.txt', cred)
     True
     """
-    if remote_file_exists(sftp_address, cred):
-        os_helper.info(f"SFTP remote file {sftp_address} does not exist, skipping deletion.")
+    remote_path = strip_sftp_path(sftp_address, cred)
+    
+    if not(remote_file_exists(remote_path, cred)):
+        os_helper.info(f"SFTP remote file {remote_path} does not exist, skipping deletion.")
         return True
 
-    remote_path = strip_sftp_path(sftp_address, cred)
     try:
         with get_client_sftp(cred) as sftp:
             sftp.remove(remote_path)
