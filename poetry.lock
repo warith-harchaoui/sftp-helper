@@ -390,7 +390,7 @@ validators = "^0.34.0"
 type = "git"
 url = "https://github.com/warith-harchaoui/os-helper.git"
 reference = "main"
-resolved_reference = "3d093fe8c90ef21c67bccdc1e6a41bfc8537842f"
+resolved_reference = "673ac40e9a2804ba82ea125b09551c8502f42dc8"
 
 [[package]]
 name = "pandas"
