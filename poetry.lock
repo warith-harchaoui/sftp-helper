@@ -374,7 +374,7 @@ name = "os-helper"
 version = "0.1.0"
 description = "This module provides a collection of utility functions aimed at simplifying various common programming tasks, including file handling, system operations, string manipulation, folder management, and more. The functions are optimized for cross-platform compatibility and robust error handling."
 optional = false
-python-versions = "^3.13"
+python-versions = "^3.12"
 files = []
 develop = false
 
@@ -390,7 +390,7 @@ validators = "^0.34.0"
 type = "git"
 url = "https://github.com/warith-harchaoui/os-helper.git"
 reference = "main"
-resolved_reference = "673ac40e9a2804ba82ea125b09551c8502f42dc8"
+resolved_reference = "f66f8e75c36b27f6c59adcca6abdf2811a793ee1"
 
 [[package]]
 name = "pandas"
@@ -722,5 +722,5 @@ crypto-eth-addresses = ["eth-hash[pycryptodome] (>=0.7.0)"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.13"
-content-hash = "eca399c2670af2af1ad231825f843445aad57a839f2890e0f4fae7e7f40dec67"
+python-versions = "^3.12"
+content-hash = "62f3f7b248491092e33f7c1b7a936e70b0a718f3b9ee906892fe9090139f5ed1"
