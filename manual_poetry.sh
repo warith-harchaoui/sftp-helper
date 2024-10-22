@@ -10,7 +10,7 @@ set -e  # Exit the script immediately on any command failure
 
 # Configurations
 PROJECT_NAME="sftp-helper"
-PYTHON_VERSION="3.13"
+PYTHON_VERSION="3.12"
 ENV="env4sftph"
 DEPENDENCIES="pysftp git+https://github.com/warith-harchaoui/os-helper.git@main"
 DESCRIPTION="SFTP Helper is a Python libraty that provides utility function for working with SFTP servers"

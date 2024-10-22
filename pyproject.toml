@@ -6,7 +6,7 @@ authors = ["Warith Harchaoui <warith.harchaoui@gmail.com>, Mohamed Chelali <moha
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.12"
 pysftp = "^0.2.9"
 os-helper = {git = "https://github.com/warith-harchaoui/os-helper.git", rev = "main"}
 
