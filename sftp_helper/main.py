@@ -17,6 +17,7 @@ Dependencies:
 
 import pysftp
 import os_helper as osh
+from contextlib import contextmanager
 
 
 def credentials(config_path: str=None) -> dict:
@@ -45,12 +46,13 @@ def credentials(config_path: str=None) -> dict:
     return osh.get_config(keys, "SFTP", config_path)
 
 
+@contextmanager
 def get_client_sftp(cred: dict):
     """
     Establish an SFTP connection using the provided credentials.
 
-    This function wraps the pysftp Connection in a 'with' statement for safe usage.
-    It disables host key checking for simplicity, assuming trusted connections.
+    This function wraps the pysftp Connection using a context manager
+    to ensure the connection is safely closed after use.
 
     Parameters
     ----------
@@ -65,23 +67,47 @@ def get_client_sftp(cred: dict):
     Example
     -------
     >>> with get_client_sftp(cred) as sftp:
-    ...     sftp.put('local_file.txt', 'remote_file.txt')
-    ...     sftp.get('remote_file.txt', 'local_copy.txt')
+    ...     sftp.put('local_file.txt', '/remote/path/file.txt')
+    ...     sftp.get('/remote/path/file.txt', 'local_copy.txt')
 
     Raises
     ------
     SystemExit
         If the SFTP connection fails.
     """
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None  # Disable host key checking for simplicity
+
     try:
-        cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None  # Disable host key checking for simplicity
-        client = pysftp.Connection(
-            cred["sftp_host"], username=cred["sftp_login"], cnopts=cnopts, password=cred["sftp_passwd"]
-        )
-        return client
+        with pysftp.Connection(
+            cred["sftp_host"], username=cred["sftp_login"],
+            cnopts=cnopts, password=cred["sftp_passwd"]
+        ) as client:
+            yield client  # Yield the connection for use within a 'with' context
     except Exception as err:
         osh.error(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
+
+def normalize_path(path: str) -> str:
+    """
+    Normalize a given path, ensuring it starts with a '/' and has no trailing slashes.
+
+    Parameters
+    ----------
+    path : str
+        The path to normalize.
+
+    Returns
+    -------
+    str
+        The normalized path.
+    """
+    # Ensure path starts with a single '/'
+    if not path.startswith('/'):
+        path = '/' + path
+
+    # Remove any trailing slashes
+    return path.rstrip('/')
+
 
 def strip_sftp_path(sftp_address: str, cred: dict) -> str:
     """
@@ -107,10 +133,8 @@ def strip_sftp_path(sftp_address: str, cred: dict) -> str:
     >>> strip_sftp_path('sftp://example.com/folder/file.txt', cred)
     '/folder/file.txt'
     """
-    a = sftp_address.replace('sftp://', '').replace(cred["sftp_host"], '')
-    if not(a.startswith("/")):
-        a = "/" + a
-    return a
+    stripped_path = sftp_address.replace('sftp://', '').replace(cred["sftp_host"], '')
+    return normalize_path(stripped_path)
 
 
 def remote_file_exists(sftp_address: str, cred: dict) -> bool:
