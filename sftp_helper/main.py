@@ -145,6 +145,57 @@ def remote_file_exists(sftp_address: str, cred: dict) -> bool:
     return False
 
 
+def remote_dir_exist(ftp_dir: str, cred: dict) -> bool:
+    """
+    Check if the specified remote directory exists.
+
+    Parameters
+    ----------
+    ftp_dir : str
+        The remote directory path to check.
+    cred : dict
+        Dictionary containing SFTP credentials.
+
+    Returns
+    -------
+    bool
+        True if the directory exists, False otherwise.
+    """
+    with get_client_sftp(cred) as sftp:
+        try:
+            sftp.cwd(ftp_dir)  # Try to change to the directory
+            return True
+        except IOError:
+            return False
+
+def make_remote_directory(ftp_directory: str, cred: dict):
+    """
+    Ensure the specified remote directory exists, creating it if necessary.
+
+    Parameters
+    ----------
+    ftp_directory : str
+        The full remote directory path to ensure.
+    cred : dict
+        Dictionary containing SFTP credentials.
+    """
+    if not remote_dir_exist(ftp_directory, cred):
+        ftp_directories = [f for f in ftp_directory.split("/") if f]  # Split and clean up path
+        with get_client_sftp(cred) as sftp:
+            # Create each directory level if it does not exist
+            for i in range(len(ftp_directories)):
+                current_path = "/" + "/".join(ftp_directories[:i + 1])
+                try:
+                    sftp.cwd(current_path)  # Check if directory exists
+                except IOError:
+                    sftp.mkdir(current_path)  # Create directory if it doesn’t exist
+
+        # Final verification step
+        osh.check(remote_dir_exist(ftp_directory, cred), f"Remote directory creation failed:\n\t{ftp_directory}\n\t(stopped at {current_path})")
+    else:
+        osh.info(f"Directory already exists: {ftp_directory}")
+
+
 def delete(sftp_address: str, cred: dict) -> bool:
     """
     Delete a file from the remote SFTP server.
