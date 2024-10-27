@@ -3,7 +3,7 @@ SFTP Helper
 
 This module provides functions to interact with an SFTP server, allowing users to perform file uploads, downloads, 
 and deletions, as well as to check file existence remotely. The module relies on pysftp for SFTP operations and 
-os_helper for auxiliary tasks.
+osh for auxiliary tasks.
 
 Authors:
 - [Warith Harchaoui](https://harchaoui.org/warith)
@@ -12,11 +12,11 @@ Authors:
 
 Dependencies:
 - pysftp: Python SFTP client, https://pypi.org/project/pysftp/
-- os_helper: Custom helper functions for file and system operations
+- osh: Custom helper functions for file and system operations
 """
 
 import pysftp
-import os_helper
+import os_helper as osh
 
 
 def credentials(config_path: str=None) -> dict:
@@ -42,7 +42,7 @@ def credentials(config_path: str=None) -> dict:
         If the configuration file does not contain the required keys (or not present in capitals in the environment variables).
     """
     keys = ['sftp_host', 'sftp_login', 'sftp_passwd', 'sftp_destination_path', 'sftp_https']
-    return os_helper.get_config(keys, "SFTP", config_path)
+    return osh.get_config(keys, "SFTP", config_path)
 
 
 def get_client_sftp(cred: dict):
@@ -81,7 +81,7 @@ def get_client_sftp(cred: dict):
         )
         return client
     except Exception as err:
-        os_helper.error(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
+        osh.error(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
 
 def strip_sftp_path(sftp_address: str, cred: dict) -> str:
     """
@@ -138,10 +138,10 @@ def remote_file_exists(sftp_address: str, cred: dict) -> bool:
     try:
         with get_client_sftp(cred) as sftp:
             exists = sftp.exists(remote_path)
-            os_helper.info(f"SFTP file {sftp_address} existence check: {'True' if exists else 'False'}")
+            osh.info(f"SFTP file {sftp_address} existence check: {'True' if exists else 'False'}")
             return exists
     except Exception as err:
-        os_helper.error(f"Failed to check SFTP file existence for :\n\t{sftp_address}.\nError:\n\t{str(err)}")
+        osh.error(f"Failed to check SFTP file existence for :\n\t{sftp_address}.\nError:\n\t{str(err)}")
     return False
 
 
@@ -220,20 +220,20 @@ def delete(sftp_address: str, cred: dict) -> bool:
     remote_path = strip_sftp_path(sftp_address, cred)
     
     if not(remote_file_exists(remote_path, cred)):
-        os_helper.info(f"SFTP remote file {remote_path} does not exist, skipping deletion.")
+        osh.info(f"SFTP remote file {remote_path} does not exist, skipping deletion.")
         return True
 
     try:
         with get_client_sftp(cred) as sftp:
             sftp.remove(remote_path)
-            os_helper.check(
+            osh.check(
                 not remote_file_exists(sftp_address, cred),
                 msg=f"Failed to delete {sftp_address} on SFTP server."
             )
-            os_helper.info(f"SFTP file {sftp_address} successfully deleted.")
+            osh.info(f"SFTP file {sftp_address} successfully deleted.")
             return True
     except Exception as err:
-        os_helper.error(f"Error deleting SFTP file:\n\t{sftp_address}.\nError:\n\t{str(err)}")
+        osh.error(f"Error deleting SFTP file:\n\t{sftp_address}.\nError:\n\t{str(err)}")
     return False
 
 
@@ -262,9 +262,9 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
     >>> upload('local_file.txt', cred, 'sftp://example.com/folder/file.txt')
     'sftp://example.com/folder/file.txt'
     """
-    if os_helper.emptystring(sftp_address):
-        _, _, ext = os_helper.folder_name_ext(local_path)
-        h = os_helper.hashfile(local_path, hash_content=True, date=True)
+    if osh.emptystring(sftp_address):
+        _, _, ext = osh.folder_name_ext(local_path)
+        h = osh.hashfile(local_path, hash_content=True, date=True)
         sftp_address = f"{cred['sftp_destination_path']}/{h}.{ext}"
 
     delete(sftp_address, cred)
@@ -273,11 +273,11 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
     try:
         with get_client_sftp(cred) as sftp:
             sftp.put(local_path, remote_path, preserve_mtime=True, confirm=True)
-            os_helper.check(remote_file_exists(sftp_address, cred), msg=f"Upload failed for {sftp_address}")
-            os_helper.info(f"Upload successful: {local_path} -> {sftp_address}")
+            osh.check(remote_file_exists(sftp_address, cred), msg=f"Upload failed for {sftp_address}")
+            osh.info(f"Upload successful: {local_path} -> {sftp_address}")
             return sftp_address
     except Exception as err:
-        os_helper.error(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
+        osh.error(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
 
 
 def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
@@ -306,14 +306,14 @@ def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
     'local_file.txt'
     """
     remote_path = strip_sftp_path(sftp_address, cred)
-    if os_helper.emptystring(local_path):
+    if osh.emptystring(local_path):
         local_path = os.path.basename(remote_path)
 
     try:
         with get_client_sftp(cred) as sftp:
             sftp.get(remote_path, local_path, preserve_mtime=True)
-        os_helper.checkfile(local_path, msg=f"Download failed for {sftp_address}")
-        os_helper.info(f"Download successful: {sftp_address} -> {local_path}")
+        osh.checkfile(local_path, msg=f"Download failed for {sftp_address}")
+        osh.info(f"Download successful: {sftp_address} -> {local_path}")
         return local_path
     except (IOError, OSError) as err:
-        os_helper.error(f"Download failed: {sftp_address} -> {local_path}. Error: {str(err)}")
+        osh.error(f"Download failed: {sftp_address} -> {local_path}. Error: {str(err)}")
