@@ -18,7 +18,9 @@ __all__ = [
     'remote_file_exists',
     'delete',
     'upload',
-    'download'
+    'download',
+    'remote_dir_exist',
+    'make_remote_directory',
 ]
 
 from .main import (
@@ -28,6 +30,8 @@ from .main import (
     remote_file_exists,
     delete,
     upload,
-    download
+    download,
+    remote_dir_exist,
+    make_remote_directory,
 )
 
