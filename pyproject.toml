@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sftp-helper"
-version = "0.1.0"
+version = "1.0.0"
 description = "SFTP Helper is a Python libraty that provides utility function for working with SFTP servers"
 authors = ["Warith Harchaoui <warith.harchaoui@gmail.com>, Mohamed Chelali <mohamed.t.chelali@gmail.com>, Bachir Zerroug <bzerroug@gmail.com>"]
 readme = "README.md"
