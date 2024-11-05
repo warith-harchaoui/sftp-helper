@@ -3,8 +3,8 @@
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers` developped for building Artificial Intelligence
 
 This toolbox requires:
-  - a `config.json` for the sftp parameters
-  - that you previously added you SSH key of your local file in the SFTP server
+  - a `config.json` for the sftp parameters (or YAML or environment variables or .env)
+  - that you previously added you SSH key of your local machine in the SFTP server
 
 [🕸️ AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
