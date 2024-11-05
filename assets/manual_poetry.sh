@@ -12,7 +12,7 @@ set -e  # Exit the script immediately on any command failure
 PROJECT_NAME="sftp-helper"
 PYTHON_VERSION="3.10"
 ENV="env4sftph"
-DEPENDENCIES="pysftp git+https://github.com/warith-harchaoui/os-helper.git@main"
+DEPENDENCIES="pysftp git+https://github.com/warith-harchaoui/os-helper.git@v1.0.0"
 DESCRIPTION="SFTP Helper is a Python libraty that provides utility function for working with SFTP servers"
 AUTHORS="Warith Harchaoui <warith.harchaoui@gmail.com>, Mohamed Chelali <mohamed.t.chelali@gmail.com>, Bachir Zerroug <bzerroug@gmail.com>"
 
@@ -56,8 +56,8 @@ poetry install
 poetry2setup > setup.py
 poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-# replace git commit hash with @main
-sed -i '' 's/@[a-f0-9]\{7,40\}/@main/g' requirements.txt
+# replace git commit hash with @v1.0.0
+sed -i '' 's/@[a-f0-9]\{7,40\}/@v1.0.0/g' requirements.txt
 
 # Create environment.yml for conda users (optional)
 cat <<EOL > environment.yml
