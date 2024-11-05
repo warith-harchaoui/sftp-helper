@@ -8,6 +8,9 @@
 set -x  # Print each command before executing it
 set -e  # Exit the script immediately on any command failure
 
+cd ..
+
+
 # Configurations
 PROJECT_NAME="sftp-helper"
 PYTHON_VERSION="3.10"
