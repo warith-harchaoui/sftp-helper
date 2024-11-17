@@ -4,5 +4,6 @@ channels:
 dependencies:
   - python>=3.10,<3.14
   - pip
+  - pytest         
   - pip:
-      - -r file:requirements.txt
+    - -r requirements.txt
