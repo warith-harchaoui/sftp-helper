@@ -8,7 +8,7 @@ This toolbox requires:
 
 [🕸️ AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
-[![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
+[![logo](assets/repository-open-graph-template.png)](https://harchaoui.org/warith/ai-helpers)
 
 SFTP Helper is a Python library that provides utility function for working with SFTP servers once you specified your SSH Key Credentials.
 
