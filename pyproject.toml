@@ -8,8 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.10,<3.14"
 pysftp = "^0.2.9"
-os-helper = {git = "https://github.com/warith-harchaoui/os-helper.git", rev = "main"}
-
+os-helper = {git = "https://github.com/warith-harchaoui/os-helper.git", tag="v1.0.0"}
 
 [build-system]
 requires = ["poetry-core"]
