@@ -18,6 +18,7 @@ Dependencies:
 import pysftp
 import os_helper as osh
 from contextlib import contextmanager
+import logging
 
 
 def credentials(config_path: str=None) -> dict:
@@ -85,7 +86,7 @@ def get_client_sftp(cred: dict):
         ) as client:
             yield client  # Yield the connection for use within a 'with' context
     except Exception as err:
-        osh.error(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
+        raise Exception(f"Failed to establish SFTP connection:\n{sftp://{cred['sftp_login']}@{cred['sftp_host']}}\nError: {str(err)}")
 
 def normalize_path(path: str) -> str:
     """
@@ -162,10 +163,10 @@ def remote_file_exists(sftp_address: str, cred: dict) -> bool:
     try:
         with get_client_sftp(cred) as sftp:
             exists = sftp.exists(remote_path)
-            osh.info(f"SFTP file {sftp_address} existence check: {'True' if exists else 'False'}")
+            logging.info(f"SFTP file {sftp_address} existence check: {'True' if exists else 'False'}")
             return exists
     except Exception as err:
-        osh.error(f"Failed to check SFTP file existence for :\n\t{sftp_address}.\nError:\n\t{str(err)}")
+        raise Exception(f"Failed to check SFTP file existence for {sftp_address}.\nError: {str(err)}")
     return False
 
 
@@ -215,9 +216,9 @@ def make_remote_directory(ftp_directory: str, cred: dict):
                     sftp.mkdir(current_path)  # Create directory if it doesn’t exist
 
         # Final verification step
-        osh.check(remote_dir_exist(ftp_directory, cred), f"Remote directory creation failed:\n\t{ftp_directory}\n\t(stopped at {current_path})")
+        assert remote_dir_exist(ftp_directory, cred), f"Remote directory creation failed:\n\t{ftp_directory}\n\t(stopped at {current_path})"
     else:
-        osh.info(f"Directory already exists: {ftp_directory}")
+        logging.info(f"Directory already exists: {ftp_directory}")
 
 
 def delete(sftp_address: str, cred: dict) -> bool:
@@ -244,20 +245,17 @@ def delete(sftp_address: str, cred: dict) -> bool:
     remote_path = strip_sftp_path(sftp_address, cred)
     
     if not(remote_file_exists(remote_path, cred)):
-        osh.info(f"SFTP remote file {remote_path} does not exist, skipping deletion.")
+        logging.info(f"SFTP remote file {remote_path} does not exist, skipping deletion.")
         return True
 
     try:
         with get_client_sftp(cred) as sftp:
             sftp.remove(remote_path)
-            osh.check(
-                not remote_file_exists(sftp_address, cred),
-                msg=f"Failed to delete {sftp_address} on SFTP server."
-            )
-            osh.info(f"SFTP file {sftp_address} successfully deleted.")
+            assert not remote_file_exists(sftp_address, cred), f"Failed to delete {sftp_address} on SFTP server."
+            logging.info(f"SFTP file {sftp_address} successfully deleted.")
             return True
     except Exception as err:
-        osh.error(f"Error deleting SFTP file:\n\t{sftp_address}.\nError:\n\t{str(err)}")
+        raise Exception(f"Failed to delete SFTP file:\n\t{sftp_address}.\nError:\n\t{str(err)}")
     return False
 
 
@@ -297,11 +295,11 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
     try:
         with get_client_sftp(cred) as sftp:
             sftp.put(local_path, remote_path, preserve_mtime=True, confirm=True)
-            osh.check(remote_file_exists(sftp_address, cred), msg=f"Upload failed for {sftp_address}")
-            osh.info(f"Upload successful: {local_path} -> {sftp_address}")
+            assert remote_file_exists(sftp_address, cred), f"Upload failed for {sftp_address}"
+            logging.info(f"Upload successful: {local_path} -> {sftp_address}")
             return sftp_address
     except Exception as err:
-        osh.error(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
+        raise Exception(f"Upload failed:\n\t{local_path}\n\t->{sftp_address}.\nError:\n\t{str(err)}")
 
 
 def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
@@ -321,7 +319,7 @@ def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
         with get_client_sftp(cred) as sftp:
             sftp.get(remote_path, local_path, preserve_mtime=True)
             osh.checkfile(local_path, msg=f"Download failed for {sftp_address}")
-            osh.info(f"Download successful: {sftp_address} -> {local_path}")
+            logging.info(f"Download successful: {sftp_address} -> {local_path}")
             return local_path
     except Exception as err:
-        osh.error(f"Download failed:\n\t{sftp_address}\n\t->{local_path}.\nError:\n\t{str(err)}")
+        raise Exception(f"Download failed:\n\t{sftp_address}\n\t->{local_path}.\nError:\n\t{str(err)}")
