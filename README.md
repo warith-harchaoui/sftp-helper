@@ -10,7 +10,7 @@ This toolbox requires:
 
 [![logo](assets/repository-open-graph-template.png)](https://harchaoui.org/warith/ai-helpers)
 
-SFTP Helper is a Python library that provides utility function for working with SFTP servers once you specified your SSH Key Credentials.
+SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
 
 # Installation
 
@@ -22,7 +22,14 @@ We can recommand python environments. Check this link if you don't know how
 
 
 ```bash
-pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v1.0.0
+pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.0.0
+```
+
+Or, from a checkout:
+
+```bash
+pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Write your own configuration file
@@ -107,6 +114,30 @@ url_exist = osh.is_working_url(url)
 print(f"URL is working:\n\t{url}" if url_exist else f"Failed URL:\n\t{url}")
 
 ```
+
+## Temporary remote files
+
+If you need a unique remote path that gets cleaned up automatically, use the
+`remote_tempfile` context manager:
+
+```python
+import sftp_helper as sftph
+import os_helper as osh
+
+credentials = sftph.credentials("path/to/sftp_config.json")
+
+with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
+    sftph.upload("local.txt", credentials, sftp_address)
+    assert osh.is_working_url(url)
+# On exit, the remote file is deleted.
+```
+
+## Host key verification
+
+`sftp_helper` never disables host key verification. The default policy is
+`paramiko.RejectPolicy()` and `~/.ssh/known_hosts` is loaded automatically. To
+trust a server in a non-default location, point at an extra known_hosts file
+via the optional `sftp_known_hosts` credential.
 
 # Authors
  - [Warith Harchaoui](https://harchaoui.org/warith)
