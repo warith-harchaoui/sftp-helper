@@ -1,15 +1,26 @@
-[tool.poetry]
-name = "sftp-helper"
-version = "1.0.0"
-description = "SFTP Helper is a Python libraty that provides utility function for working with SFTP servers"
-authors = ["Warith Harchaoui <warith.harchaoui@gmail.com>, Mohamed Chelali <mohamed.t.chelali@gmail.com>, Bachir Zerroug <bzerroug@gmail.com>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.14"
-pysftp = "^0.2.9"
-os-helper = {git = "https://github.com/warith-harchaoui/os-helper.git", tag="v1.0.0"}
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sftp-helper"
+version = "2.0.0"
+description = "SFTP Helper: utility functions for working with SFTP servers via paramiko."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+authors = [
+    {name = "Warith Harchaoui", email = "warith.harchaoui@gmail.com"},
+    {name = "Mohamed Chelali", email = "mohamed.t.chelali@gmail.com"},
+    {name = "Bachir Zerroug", email = "bzerroug@gmail.com"},
+]
+dynamic = ["dependencies"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pyyaml>=6"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+include = ["sftp_helper*"]
+exclude = ["tests*"]
