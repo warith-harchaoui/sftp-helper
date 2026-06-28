@@ -1,2 +1,2 @@
 paramiko>=3.0,<4
-os-helper @ git+https://github.com/warith-harchaoui/os-helper.git@v1.1.0
+os-helper @ git+https://github.com/warith-harchaoui/os-helper.git@v1.3.0

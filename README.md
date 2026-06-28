@@ -22,7 +22,7 @@ We can recommand python environments. Check this link if you don't know how
 
 
 ```bash
-pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.0.0
+pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.1.0
 ```
 
 Or, from a checkout:
@@ -87,32 +87,29 @@ In which you can find these information in your favorite FTP tool (mine is FileZ
 
 ## Usage
 
-Here are an example of how to use SFTP helper **which cannot work without a well written `path/to/sftp_config.json`** :
+Here's an example of how to use SFTP helper (**won't work without a valid `path/to/sftp_config.json`**):
+
 ```python
 import sftp_helper as sftph
 import os_helper as osh
 
 # Write a small text file
 local_file = "example.txt"
-with open(local_file, "wt") as fout:
-    fout.write("A small example of text")
+with open(local_file, "wt") as f:
+    f.write("A small example of text")
 
-credentials = sftph.credentials("path/to/sftp_config.json") # or path/to/sftp_config.yaml
-# or nothing in order to fall back on .env or environment variables
+# Load creds from JSON / YAML file, or fall back to .env / environment vars.
+cred = sftph.credentials("path/to/sftp_config.json")
 
-remote_file = credentials["sftp_destination_path"] + "/" + local_file
-url = credentials["sftp_https"] + "/" + local_file
+remote_file = cred["sftp_destination_path"] + "/" + local_file
+url = cred["sftp_https"] + "/" + local_file
 
-u = sftph.upload(local_file, credentials, remote_file)
+# upload() raises on failure and returns the destination URL on success.
+sftph.upload(local_file, cred, remote_file)
+print(f"Uploaded {local_file} to {remote_file}")
 
-osh.check(not(u is None), msg=f'Upload of {local_file} to {u} failed')
-
-print(f"Upload of {local_file} to {u} is successful" if not(u is None) else f"Failed upload of {local_file} to {u}")
-
-url_exist = osh.is_working_url(url)
-
-print(f"URL is working:\n\t{url}" if url_exist else f"Failed URL:\n\t{url}")
-
+assert osh.is_working_url(url), f"URL not reachable: {url}"
+print(f"URL is live: {url}")
 ```
 
 ## Temporary remote files
@@ -139,8 +136,9 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 trust a server in a non-default location, point at an extra known_hosts file
 via the optional `sftp_known_hosts` credential.
 
-# Authors
- - [Warith Harchaoui](https://harchaoui.org/warith)
- - [Mohamed Chelali](https://mchelali.github.io)
- - [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug)
+# Author
+ - [Warith HARCHAOUI](https://harchaoui.org/warith)
+
+# Acknowledgements
+Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) for fruitful discussions.
 
