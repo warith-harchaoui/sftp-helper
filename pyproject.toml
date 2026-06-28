@@ -1,24 +1,43 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sftp-helper"
 version = "2.1.0"
-description = "SFTP Helper: utility functions for working with SFTP servers via paramiko."
+description = "SFTP Helper — utility functions for working with SFTP servers via paramiko. Strict host-key verification, credentials loader, upload / download / list / remove / exists / remote_tempfile context manager."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
+license = {text = "BSD-3-Clause"}
 authors = [
     {name = "Warith HARCHAOUI", email = "warithmetics@deraison.ai"},
 ]
-dynamic = ["dependencies"]
+keywords = ["sftp", "paramiko", "ssh", "file-transfer", "secure"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: File Transfer Protocol (FTP)",
+    "Topic :: System :: Networking",
+]
+dependencies = [
+    "os-helper @ git+https://github.com/warith-harchaoui/os-helper.git@v1.3.0",
+    "paramiko>=3.0,<4",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "pyyaml>=6"]
+dev = ["pytest>=8", "pyyaml>=6"]
 
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+[project.urls]
+Homepage = "https://github.com/warith-harchaoui/sftp-helper"
+Issues = "https://github.com/warith-harchaoui/sftp-helper/issues"
 
 [tool.setuptools.packages.find]
 include = ["sftp_helper*"]
-exclude = ["tests*"]
+exclude = ["tests*", "assets*"]
