@@ -1,9 +1,0 @@
-name: env4sftph
-channels:
-  - defaults
-dependencies:
-  - python>=3.10,<3.14
-  - pip
-  - pytest         
-  - pip:
-    - -r requirements.txt
