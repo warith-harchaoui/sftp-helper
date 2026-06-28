@@ -10,10 +10,8 @@ Backed by paramiko's SFTPClient. Host key verification is on by default:
 who wants to trust a specific server may pass an additional known_hosts file
 via ``cred["sftp_known_hosts"]`` -- there is no flag to disable verification.
 
-Authors:
-- Warith Harchaoui (https://harchaoui.org/warith)
-- Mohamed Chelali (https://mchelali.github.io)
-- Bachir Zerroug (https://www.linkedin.com/in/bachirzerroug)
+Author:
+- Warith HARCHAOUI (https://harchaoui.org/warith)
 """
 
 import logging
@@ -21,13 +19,13 @@ import os
 import secrets
 import stat as stat_mod
 from contextlib import contextmanager
-from typing import Iterator, Tuple
+from typing import Iterator, Optional, Tuple
 
 import os_helper as osh
 import paramiko
 
 
-def credentials(config_path: str = None) -> dict:
+def credentials(config_path: Optional[str] = None) -> dict:
     """
     Retrieve SFTP credentials from a configuration file, folder, or environment.
 
@@ -282,12 +280,12 @@ def remote_tempfile(
     ...     assert osh.is_working_url(url)
     """
     name = secrets.token_hex(16)
-    if ext:
+    if not osh.emptystring(ext):
         name = f"{name}.{ext.lstrip('.')}"
 
     base_remote = cred["sftp_destination_path"].rstrip("/")
     base_https = cred["sftp_https"].rstrip("/")
-    if subdir:
+    if not osh.emptystring(subdir):
         clean_sub = subdir.strip("/")
         base_remote = f"{base_remote}/{clean_sub}"
         base_https = f"{base_https}/{clean_sub}"

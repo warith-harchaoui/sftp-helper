@@ -4,14 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sftp-helper"
-version = "2.0.1"
+version = "2.1.0"
 description = "SFTP Helper: utility functions for working with SFTP servers via paramiko."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 authors = [
-    {name = "Warith Harchaoui", email = "warith.harchaoui@gmail.com"},
-    {name = "Mohamed Chelali", email = "mohamed.t.chelali@gmail.com"},
-    {name = "Bachir Zerroug", email = "bzerroug@gmail.com"},
+    {name = "Warith HARCHAOUI", email = "warithmetics@deraison.ai"},
 ]
 dynamic = ["dependencies"]
 

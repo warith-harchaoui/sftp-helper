@@ -67,15 +67,6 @@ CRED_KEYS = {
 }
 
 
-# os_helper.get_config (v1.0.0, commit 142bbee) is currently broken in two
-# places: it calls the internal _valid_config_file with the wrong arity, and
-# its `config` variable is unbound when path points at a non-file. Until that
-# is fixed upstream, the credentials loader is xfailed -- the wrapper itself
-# is a one-liner and the bug is not in this repo.
-_OSHELPER_BROKEN = "blocked by os_helper.get_config bug (TypeError / UnboundLocalError)"
-
-
-@pytest.mark.xfail(reason=_OSHELPER_BROKEN, strict=True)
 def test_credentials_from_json(tmp_path):
     cfg = tmp_path / "sftp_config.json"
     cfg.write_text(json.dumps(CRED_KEYS))
@@ -84,7 +75,6 @@ def test_credentials_from_json(tmp_path):
         assert cred[k] == v
 
 
-@pytest.mark.xfail(reason=_OSHELPER_BROKEN, strict=True)
 def test_credentials_from_yaml(tmp_path):
     cfg = tmp_path / "sftp_config.yaml"
     cfg.write_text(yaml.safe_dump(CRED_KEYS))
@@ -93,7 +83,6 @@ def test_credentials_from_yaml(tmp_path):
         assert cred[k] == v
 
 
-@pytest.mark.xfail(reason=_OSHELPER_BROKEN, strict=True)
 def test_credentials_from_env(monkeypatch, tmp_path):
     for k, v in CRED_KEYS.items():
         monkeypatch.setenv(k.upper(), v)
@@ -104,13 +93,11 @@ def test_credentials_from_env(monkeypatch, tmp_path):
 
 
 def test_credentials_missing_key_raises(tmp_path):
-    # NB: today this passes because os_helper.get_config has a TypeError on
-    # the happy path (see xfailed tests above); once os_helper is fixed, this
-    # test should be revisited to assert the *intended* missing-key behavior.
+    """os_helper >= v1.2.0 raises RuntimeError when no source provides the keys."""
     incomplete = {k: v for k, v in CRED_KEYS.items() if k != "sftp_https"}
     cfg = tmp_path / "sftp_config.json"
     cfg.write_text(json.dumps(incomplete))
-    with pytest.raises(BaseException):
+    with pytest.raises(RuntimeError):
         sftph.credentials(str(cfg))
 
 

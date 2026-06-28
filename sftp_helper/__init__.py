@@ -5,10 +5,8 @@ This module provides functions to interact with an SFTP server, allowing users
 to perform file uploads, downloads, and deletions, as well as to check file
 existence remotely. Backed by paramiko with strict host-key verification.
 
-Authors:
-- Warith Harchaoui (https://harchaoui.org/warith)
-- Mohamed Chelali (https://mchelali.github.io)
-- Bachir Zerroug (https://www.linkedin.com/in/bachirzerroug)
+Author:
+- Warith HARCHAOUI (https://harchaoui.org/warith)
 """
 
 __all__ = [
