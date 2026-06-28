@@ -1,5 +1,7 @@
 # SFTP Helper
 
+> 🌐 Version française : [LISEZMOI.md](LISEZMOI.md)
+
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers` developped for building Artificial Intelligence
 
 This toolbox requires:
@@ -141,4 +143,3 @@ via the optional `sftp_known_hosts` credential.
 
 # Acknowledgements
 Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) for fruitful discussions.
-
