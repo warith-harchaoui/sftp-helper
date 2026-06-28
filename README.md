@@ -8,7 +8,7 @@ This toolbox requires:
 
 [🕸️ AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
-[![logo](assets/repository-open-graph-template.png)](https://harchaoui.org/warith/ai-helpers)
+[![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 
 SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
 
