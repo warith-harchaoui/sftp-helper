@@ -10,7 +10,7 @@ This toolbox requires:
   - a `config.json` for the sftp parameters (or YAML or environment variables or .env)
   - that you previously added you SSH key of your local machine in the SFTP server
 
-[🕸️ AI Helpers](https://harchaoui.org/warith/ai-helpers)
+[🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
 [![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 

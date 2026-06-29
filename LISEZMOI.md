@@ -10,7 +10,7 @@ Cette boîte à outils nécessite :
   - un fichier `config.json` pour les paramètres SFTP (ou YAML, ou variables d'environnement, ou `.env`)
   - que vous ayez préalablement ajouté la clé SSH de votre machine locale sur le serveur SFTP
 
-[🕸️ AI Helpers](https://harchaoui.org/warith/ai-helpers)
+[🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
 [![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 
