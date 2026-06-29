@@ -41,3 +41,22 @@ Issues = "https://github.com/warith-harchaoui/sftp-helper/issues"
 [tool.setuptools.packages.find]
 include = ["sftp_helper*"]
 exclude = ["tests*", "assets*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["assets", "tests"]
+
+[tool.ruff.lint]
+# Conservative starter set: pyflakes (F), pycodestyle errors (E), warnings (W),
+# isort (I), bugbear (B), comprehensions (C4), pyupgrade (UP), simplify (SIM).
+# Easy to tighten later; this is the baseline.
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM"]
+ignore = [
+    "E501",  # line-too-long — handled by formatter / context-dependent
+    "B008",  # function call in argument default — too noisy for our style
+    "SIM108",  # ternary preferred over if/else — sometimes hurts readability
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]  # assert False in pytest is fine
