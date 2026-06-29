@@ -37,7 +37,14 @@ pip install -e .
 
 ## Write your own configuration file
 
-You have to write your own `sftp_config.json` file or `sftp_config.yaml` file or environment variables (in case you don't provide neither `yaml` nor `json` files) or `.env` file:
+A ready-to-fill template is committed at [`sftp_config.json.example`](sftp_config.json.example). Copy it to `sftp_config.json` and edit in place — real `*config.json` files are gitignored so you cannot accidentally commit secrets:
+
+```bash
+cp sftp_config.json.example sftp_config.json
+# then edit sftp_config.json with your credentials
+```
+
+You may also provide a YAML version (`sftp_config.yaml`), environment variables, or an `.env` file — `sftp-helper` falls back in that order via `os_helper.get_config`:
 
 _JSON_
 ```json
@@ -90,6 +97,8 @@ In which you can find these information in your favorite FTP tool (mine is FileZ
 
 ## Usage
 
+For the full catalog of recipes (uploads, downloads, existence checks, recursive directory creation, temporary remote files with auto-cleanup, strict host-key verification), see [📋 EXAMPLES.md](EXAMPLES.md).
+
 Here's an example of how to use SFTP helper (**won't work without a valid `path/to/sftp_config.json`**):
 
 ```python
@@ -110,9 +119,11 @@ url = cred["sftp_https"] + "/" + local_file
 # upload() raises on failure and returns the destination URL on success.
 sftph.upload(local_file, cred, remote_file)
 print(f"Uploaded {local_file} to {remote_file}")
+# Uploaded example.txt to /remote/base/path/example.txt
 
 assert osh.is_working_url(url), f"URL not reachable: {url}"
 print(f"URL is live: {url}")
+# URL is live: https://files.example.com/example.txt
 ```
 
 ## Temporary remote files

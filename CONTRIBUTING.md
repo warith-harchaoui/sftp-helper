@@ -48,6 +48,42 @@ Names starting with `_` are not part of the public API and may change
 between any two releases without a major bump. Don't rely on them in
 external code.
 
+## Coding style
+
+Every Python file in this suite follows the same shape (mandate 2026-06-29):
+
+1. **Numpy-style docstring on every function and class.** Sections in order:
+   short summary, optional extended summary, `Parameters`, `Returns` /
+   `Yields`, `Raises`, `Examples`, `Notes`. Sphinx-friendly underlines
+   (`----`).
+2. **Module-level header docstring on every `.py` file.** Numpy style, with
+   a `Module summary` paragraph, a `Usage example` section, and an
+   `Author` section pointing at
+   [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui).
+3. **Full type annotations.** Parameters, returns, class attributes,
+   module-level constants. `from __future__ import annotations` to keep
+   forward refs cheap. Prefer `TypedDict` for structured returns
+   (already a pattern across the suite).
+4. **Generous comments.** Explain the *why* and any non-obvious *how*.
+   Comments above blocks, not redundant inline. Cite the trade-off when
+   picking an algorithm or backend.
+5. **No bare `print(...)` in `.py` code.** Use `os_helper`'s logging
+   surface — `osh.info(...)` / `osh.warning(...)` / `osh.error(...)` /
+   `osh.debug(...)` — so verbosity is controlled centrally via
+   `osh.verbosity(level)`. **Docs (README, LISEZMOI, EXAMPLES.md, docstring
+   examples) keep `print(...)`** — tutorial code reads naturally that way.
+6. **`print(...)` in docs is followed by a `#`-comment showing expected
+   output.** Doctest / REPL style — either trailing inline
+   (`print(x)  # 42`) or on the next line (`# 42`).
+7. **EXAMPLES.md** at the repo root, linked from README + LISEZMOI. Self-
+   contained, runnable cookbook of the helper'''s main use cases.
+8. **`*_config.json.example`** for any helper that loads credentials via
+   `os_helper.get_config`. Real `*config.json` files are `.gitignore`d;
+   the `.example` is committed.
+9. **Wherever `brew install <pkg>` appears in the docs**, the line is
+   accompanied by `(install `brew` thanks to [brew.sh](https://brew.sh/))`
+   when not already obvious from context.
+
 ## Releases
 
 Releases live in [`CHANGELOG.md`](CHANGELOG.md) following the

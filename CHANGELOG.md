@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Establish suite-wide Python coding-style mandate in `CONTRIBUTING.md`:
+  numpy-style docstrings on every function and class, module-level
+  docstring header (with usage example + author), full type annotations,
+  generous explanatory comments.
+- `EXAMPLES.md` cookbook present at the repo root and linked from
+  README + LISEZMOI.
+- `print(...)` in docs (EXAMPLES.md / README / LISEZMOI) is followed by
+  a `#`-comment showing the expected output (doctest / REPL style);
+  library `.py` code uses `osh.info` / `osh.warning` / `osh.error`
+  instead of bare `print`.
+- Every `brew install <pkg>` mention is paired with a brew.sh hint when
+  not already obvious from context.
+- `.gitignore` updated to drop accidental `*config.json` commits while
+  keeping `*config.json.example` templates tracked.
+- Ship `sftp_config.json.example` template at the repo root for first-time setup.
+
 ### Changed
 
 - Drop `requirements.txt` and `environment.yml` (redundant with

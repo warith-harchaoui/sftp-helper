@@ -36,7 +36,14 @@ pip install -e ".[dev]"
 
 ## Écrire votre fichier de configuration
 
-Vous devez écrire votre propre `sftp_config.json`, `sftp_config.yaml`, des variables d'environnement (si vous ne fournissez ni YAML ni JSON), ou un fichier `.env` :
+Un template prêt-à-remplir est committé dans [`sftp_config.json.example`](sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored donc impossible de committer des secrets par accident :
+
+```bash
+cp sftp_config.json.example sftp_config.json
+# puis éditez sftp_config.json avec vos identifiants
+```
+
+Vous pouvez aussi fournir une version YAML (`sftp_config.yaml`), des variables d'environnement, ou un fichier `.env` — `sftp-helper` essaie dans cet ordre via `os_helper.get_config` :
 
 _JSON_
 ```json
@@ -109,9 +116,11 @@ url = cred["sftp_https"] + "/" + local_file
 # upload() lève une exception en cas d'échec et retourne l'URL en cas de succès.
 sftph.upload(local_file, cred, remote_file)
 print(f"Uploadé {local_file} vers {remote_file}")
+# Uploadé example.txt vers /remote/base/path/example.txt
 
 assert osh.is_working_url(url), f"URL inaccessible : {url}"
 print(f"URL en ligne : {url}")
+# URL en ligne : https://files.example.com/example.txt
 ```
 
 ## Fichiers distants temporaires
