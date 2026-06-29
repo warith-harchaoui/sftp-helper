@@ -11,7 +11,7 @@ who wants to trust a specific server may pass an additional known_hosts file
 via ``cred["sftp_known_hosts"]`` -- there is no flag to disable verification.
 
 Author:
-- Warith HARCHAOUI (https://harchaoui.org/warith)
+- Warith HARCHAOUI (https://linkedin.com/in/warith-harchaoui)
 """
 
 import logging

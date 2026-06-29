@@ -76,7 +76,7 @@ pytest -v -m ""           # everything
 
 ## Authorship
 
-Sole author: [Warith HARCHAOUI](https://harchaoui.org/warith).
+Sole author: [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui).
 External contributions are welcome — please open an issue or PR.
 
 Special thanks to [Mohamed Chelali](https://mchelali.github.io) and

@@ -6,7 +6,7 @@ to perform file uploads, downloads, and deletions, as well as to check file
 existence remotely. Backed by paramiko with strict host-key verification.
 
 Author:
-- Warith HARCHAOUI (https://harchaoui.org/warith)
+- Warith HARCHAOUI (https://linkedin.com/in/warith-harchaoui)
 """
 
 __all__ = [

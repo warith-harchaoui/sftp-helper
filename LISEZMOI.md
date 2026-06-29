@@ -133,7 +133,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 `sftp_helper` ne désactive jamais la vérification de la clé d'hôte. La politique par défaut est `paramiko.RejectPolicy()` et `~/.ssh/known_hosts` est chargé automatiquement. Pour faire confiance à un serveur dont la clé n'est pas à l'emplacement par défaut, pointez sur un fichier `known_hosts` additionnel via l'identifiant optionnel `sftp_known_hosts`.
 
 # Auteur
- - [Warith HARCHAOUI](https://harchaoui.org/warith)
+ - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
 
 # Remerciements
 Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) for fruitful discussions.

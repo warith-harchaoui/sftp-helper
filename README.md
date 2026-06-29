@@ -139,7 +139,7 @@ trust a server in a non-default location, point at an extra known_hosts file
 via the optional `sftp_known_hosts` credential.
 
 # Author
- - [Warith HARCHAOUI](https://harchaoui.org/warith)
+ - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
 
 # Acknowledgements
 Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) for fruitful discussions.
