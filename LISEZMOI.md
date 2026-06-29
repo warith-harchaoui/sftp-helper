@@ -1,6 +1,6 @@
 # SFTP Helper
 
-> 🌐 English version: [README.md](README.md)
+[🇫🇷](LISEZMOI.md) · [🇬🇧](README.md)
 
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 

@@ -1,6 +1,6 @@
 # SFTP Helper
 
-> 🌐 Version française : [LISEZMOI.md](LISEZMOI.md)
+[🇫🇷](LISEZMOI.md) · [🇬🇧](README.md)
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers` developped for building Artificial Intelligence
 
@@ -21,7 +21,6 @@ SFTP Helper is a Python library that provides utility functions for working with
 We can recommand python environments. Check this link if you don't know how
 
 [🥸 Tech tips](https://harchaoui.org/warith/4ml/#install)
-
 
 ```bash
 pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.1.0
