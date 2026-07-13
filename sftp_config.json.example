@@ -1,0 +1,9 @@
+{
+  "sftp_host": "sftp.example.com",
+  "sftp_login": "your-login",
+  "sftp_passwd": "your-password-or-leave-empty-to-use-ssh-agent",
+  "sftp_destination_path": "/remote/base/path",
+  "sftp_https": "https://files.example.com",
+  "sftp_port": "22",
+  "sftp_known_hosts": ""
+}

@@ -1,0 +1,13 @@
+# sftp-helper — pip requirements (portable, no `file://` deps).
+#
+# For a plain install:
+#     pip install -r requirements.txt
+#     pip install -e .           # sftp-helper itself (editable) or `pip install .`
+#
+# Optional surfaces (CLI/API/MCP) live behind extras, e.g. `.[cli]`, `.[api,mcp]`.
+# The os-helper pin is kept in lock-step with the release tag below.
+
+# --- Suite dependency -----------------------------------------------------
+os-helper>=1.4.2
+# --- Core runtime ---------------------------------------------------------
+paramiko>=3.0,<4
