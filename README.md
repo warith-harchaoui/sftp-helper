@@ -16,6 +16,12 @@ This toolbox requires:
 
 SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
 
+# Documentation
+
+[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
+
+[📋 Examples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
+
 # Installation
 
 **Prerequisites** — **Python 3.10–3.13** and **git**, cross-platform:
