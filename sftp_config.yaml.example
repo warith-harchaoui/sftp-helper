@@ -1,0 +1,49 @@
+# sftp_config.yaml.example
+# -------------------------
+# Heavily-commented template for sftp-helper credentials.
+#
+# Copy this file to `sftp_config.yaml` and replace every dummy value:
+#     cp sftp_config.yaml.example sftp_config.yaml
+#
+# `sftp_config.yaml` is gitignored (the *.example template is the ONLY
+# tracked variant), so you cannot accidentally commit real secrets.
+#
+# sftp-helper discovers credentials in this order (via os_helper.get_config):
+#   1. an explicit --config path (file or directory containing a config)
+#   2. environment variables (SFTP_HOST, SFTP_LOGIN, ...)
+#   3. a .env file
+# A JSON twin (sftp_config.json.example) is also provided; YAML is preferred
+# here precisely because it supports the comments below.
+
+# REQUIRED — hostname of the SFTP server.
+# Where to find it: your FTP client (e.g. FileZilla) "Host" field, without
+# any scheme. Looks like a domain: `sftp.example.com`.
+sftp_host: "sftp.example.com"
+
+# REQUIRED — SSH/SFTP username.
+# The same login you use in your FTP client.
+sftp_login: "your-login"
+
+# REQUIRED — SFTP password.
+# Leave this EMPTY ("") to authenticate with your SSH agent / key files
+# (~/.ssh/id_rsa, ~/.ssh/id_ed25519, ...) instead of a password.
+sftp_passwd: "your-password-or-leave-empty-to-use-ssh-agent"
+
+# REQUIRED — remote base directory for uploads.
+# Absolute path on the server under which files are written, e.g.
+# `/var/www/uploads` or `/home/you/public`.
+sftp_destination_path: "/remote/base/path"
+
+# REQUIRED — public HTTPS base URL that maps to sftp_destination_path.
+# Used to turn a remote file into a shareable web link. If your uploads
+# folder is served at https://files.example.com, put that here.
+sftp_https: "https://files.example.com"
+
+# OPTIONAL — SSH port (default: 22).
+# Change only if your server listens on a non-standard port.
+sftp_port: "22"
+
+# OPTIONAL — extra known_hosts file to trust, in addition to
+# ~/.ssh/known_hosts. Strict host-key verification is always on; there is
+# no flag to disable it. Leave empty to rely on the system known_hosts.
+sftp_known_hosts: ""

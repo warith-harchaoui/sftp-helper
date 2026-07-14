@@ -8,7 +8,7 @@ calls made to it.
 import json
 import os
 import stat as stat_mod
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import paramiko
 import pytest
@@ -17,10 +17,10 @@ import yaml
 import sftp_helper as sftph
 from sftp_helper import main as sftph_main
 
-
 # ---------------------------------------------------------------------------
 # Pure functions
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "raw,expected",
@@ -105,6 +105,7 @@ def test_credentials_missing_key_raises(tmp_path):
 # Mocked SFTP fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_ssh(monkeypatch):
     """Replace paramiko.SSHClient with a MagicMock factory.
@@ -146,6 +147,7 @@ def _exists_map(sftp, present):
 # Connection-level
 # ---------------------------------------------------------------------------
 
+
 def test_get_client_sftp_uses_reject_policy(mock_ssh, cred):
     _, ssh, _ = mock_ssh
     with sftph.get_client_sftp(cred):
@@ -174,9 +176,8 @@ def test_get_client_sftp_loads_extra_known_hosts(mock_ssh, cred, tmp_path):
 def test_get_client_sftp_connection_failure_raises_clean_exception(mock_ssh, cred):
     _, ssh, _ = mock_ssh
     ssh.connect.side_effect = paramiko.SSHException("boom")
-    with pytest.raises(Exception) as excinfo:
-        with sftph.get_client_sftp(cred):
-            pass
+    with pytest.raises(Exception) as excinfo, sftph.get_client_sftp(cred):
+        pass
     # The previous pysftp-era f-string crashed with NameError; verify we surface
     # the real failure with the host info embedded in the message.
     assert "NameError" not in str(excinfo.value)
@@ -196,6 +197,7 @@ def test_get_client_sftp_closes_on_normal_exit(mock_ssh, cred):
 # ---------------------------------------------------------------------------
 # File ops
 # ---------------------------------------------------------------------------
+
 
 def test_upload_puts_then_overwrites(mock_ssh, cred, tmp_path):
     sftp, _, _ = mock_ssh
@@ -232,20 +234,24 @@ def test_upload_skips_remove_when_target_absent(mock_ssh, cred, tmp_path):
 def test_download_calls_get_and_preserves_mtime(mock_ssh, cred, tmp_path, monkeypatch):
     sftp, _, _ = mock_ssh
     local = tmp_path / "out.txt"
+
     # download() calls sftp.get(), then sftp.stat() to read mtime, then os.utime().
     # Have sftp.get materialize the local file so checkfile succeeds.
     def fake_get(remote, local_path):
         open(local_path, "w").close()
+
     sftp.get.side_effect = fake_get
     file_mode = stat_mod.S_IFREG | 0o644
     sftp.stat.return_value = MagicMock(st_mode=file_mode, st_atime=10, st_mtime=20)
 
     captured = {}
     real_utime = os.utime
+
     def fake_utime(path, times):
         captured["path"] = str(path)
         captured["times"] = times
         real_utime(path, times)
+
     monkeypatch.setattr(sftph_main.os, "utime", fake_utime)
 
     sftph.download(f"sftp://{cred['sftp_host']}/folder/out.txt", cred, str(local))
@@ -299,12 +305,15 @@ def test_remote_dir_exist_false_when_file(mock_ssh, cred):
 def test_make_remote_directory_creates_nested(mock_ssh, cred):
     sftp, _, _ = mock_ssh
     created = set()
+
     def stat(path):
         if path in created:
             return MagicMock(st_mode=stat_mod.S_IFDIR | 0o755)
         raise FileNotFoundError(path)
+
     def mkdir(path):
         created.add(path)
+
     sftp.stat.side_effect = stat
     sftp.mkdir.side_effect = mkdir
 
@@ -324,15 +333,18 @@ def test_make_remote_directory_noop_when_exists(mock_ssh, cred):
 # remote_tempfile
 # ---------------------------------------------------------------------------
 
+
 def test_remote_tempfile_cleanup_on_success(mock_ssh, cred):
     sftp, _, _ = mock_ssh
     # Inside the with-block we pretend the user uploaded the file.
     state = {"present": False}
     file_mode = stat_mod.S_IFREG | 0o644
+
     def stat(path):
         if state["present"]:
             return MagicMock(st_mode=file_mode, st_atime=0, st_mtime=0)
         raise FileNotFoundError(path)
+
     sftp.stat.side_effect = stat
 
     with sftph.remote_tempfile(cred, ext="txt") as (addr, url):
@@ -340,7 +352,9 @@ def test_remote_tempfile_cleanup_on_success(mock_ssh, cred):
         assert addr.endswith(".txt")
         assert url.startswith(cred["sftp_https"] + "/")
         state["present"] = True
-        state["present"] = False  # simulate the caller's delete; tempfile cleanup must still be a safe no-op
+        state["present"] = (
+            False  # simulate the caller's delete; tempfile cleanup must still be a safe no-op
+        )
 
     # On exit, tempfile calls delete(); since file is "absent" by now, no remove() call expected.
     sftp.remove.assert_not_called()
@@ -369,9 +383,8 @@ def test_remote_tempfile_preserves_original_exception(mock_ssh, cred):
     class UserError(RuntimeError):
         pass
 
-    with pytest.raises(UserError):
-        with sftph.remote_tempfile(cred) as (_, _):
-            raise UserError("the real problem")
+    with pytest.raises(UserError), sftph.remote_tempfile(cred) as (_, _):
+        raise UserError("the real problem")
 
 
 def test_remote_tempfile_includes_subdir(mock_ssh, cred):
@@ -379,10 +392,12 @@ def test_remote_tempfile_includes_subdir(mock_ssh, cred):
     # subdir triggers make_remote_directory; track mkdir calls so subsequent
     # stat() lookups can report those paths as existing dirs.
     created_dirs = set()
+
     def stat(path):
         if path in created_dirs:
             return MagicMock(st_mode=stat_mod.S_IFDIR | 0o755)
         raise FileNotFoundError(path)
+
     sftp.stat.side_effect = stat
     sftp.mkdir.side_effect = lambda p: created_dirs.add(p)
 

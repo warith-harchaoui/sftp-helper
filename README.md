@@ -46,7 +46,7 @@ pip install -e .
 
 ## Write your own configuration file
 
-A ready-to-fill template is committed at [`sftp_config.json.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.json.example). Copy it to `sftp_config.json` and edit in place — real `*config.json` files are gitignored so you cannot accidentally commit secrets:
+A ready-to-fill template is committed at [`sftp_config.json.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.json.example). A heavily-commented YAML variant is also provided at [`sftp_config.yaml.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.yaml.example) — YAML supports inline comments explaining every key and how to obtain its value. Copy either one and edit in place — real `*config.json` / `*config.yaml` files are gitignored so you cannot accidentally commit secrets:
 
 ```bash
 cp sftp_config.json.example sftp_config.json

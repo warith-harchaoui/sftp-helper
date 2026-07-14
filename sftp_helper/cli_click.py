@@ -39,8 +39,7 @@ try:
     import click
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
-        "The click CLI requires the [cli] extra. "
-        "Install with: pip install 'sftp-helper[cli]'"
+        "The click CLI requires the [cli] extra. Install with: pip install 'sftp-helper[cli]'"
     ) from exc
 
 # Same underlying functions as the argparse twin — one source of truth.
@@ -57,13 +56,24 @@ from . import (
     upload,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 
 def _mask(cred: dict) -> dict:
+    """Return a copy of ``cred`` with the SFTP password redacted for stdout.
+
+    Parameters
+    ----------
+    cred : dict
+        Resolved credentials, potentially containing ``sftp_passwd``.
+
+    Returns
+    -------
+    dict
+        A shallow copy whose ``sftp_passwd`` (when set) is replaced by ``"***"``.
+    """
     # Never leak the SFTP password to stdout.
     masked = dict(cred)
     if masked.get("sftp_passwd"):
@@ -96,8 +106,16 @@ def cli() -> None:
 
 
 @cli.command(name="upload")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
-@click.option("--input", "input_", required=True, type=click.Path(exists=True), help="Local file path.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option(
+    "--input", "input_", required=True, type=click.Path(exists=True), help="Local file path."
+)
 @click.option("--remote", default=None, type=str, help="Full sftp:// address or plain remote path.")
 def upload_cmd(config_: str | None, input_: str, remote: str | None) -> None:
     """Upload a local file to the SFTP server."""
@@ -111,9 +129,22 @@ def upload_cmd(config_: str | None, input_: str, remote: str | None) -> None:
 
 
 @cli.command(name="download")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
-@click.option("--remote", required=True, type=str, help="Full sftp:// address or plain remote path.")
-@click.option("--output", default=None, type=click.Path(), help="Local output path (defaults to remote basename).")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option(
+    "--remote", required=True, type=str, help="Full sftp:// address or plain remote path."
+)
+@click.option(
+    "--output",
+    default=None,
+    type=click.Path(),
+    help="Local output path (defaults to remote basename).",
+)
 def download_cmd(config_: str | None, remote: str, output: str | None) -> None:
     """Download a remote file to the local disk."""
     cred = credentials(config_)
@@ -126,8 +157,16 @@ def download_cmd(config_: str | None, remote: str, output: str | None) -> None:
 
 
 @cli.command(name="delete")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
-@click.option("--remote", required=True, type=str, help="Full sftp:// address or plain remote path.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option(
+    "--remote", required=True, type=str, help="Full sftp:// address or plain remote path."
+)
 def delete_cmd(config_: str | None, remote: str) -> None:
     """Delete a remote file (no-op if absent)."""
     cred = credentials(config_)
@@ -141,8 +180,16 @@ def delete_cmd(config_: str | None, remote: str) -> None:
 
 
 @cli.command()
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
-@click.option("--remote", required=True, type=str, help="Full sftp:// address or plain remote path.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option(
+    "--remote", required=True, type=str, help="Full sftp:// address or plain remote path."
+)
 def exists(config_: str | None, remote: str) -> None:
     """Check whether a remote file exists (exit 0 = yes, 1 = no)."""
     cred = credentials(config_)
@@ -159,7 +206,13 @@ def exists(config_: str | None, remote: str) -> None:
 
 
 @cli.command(name="dir-exists")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
 @click.option("--remote", required=True, type=str, help="Remote directory path.")
 def dir_exists(config_: str | None, remote: str) -> None:
     """Check whether a remote directory exists (exit 0 = yes, 1 = no)."""
@@ -177,7 +230,13 @@ def dir_exists(config_: str | None, remote: str) -> None:
 
 
 @cli.command()
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
 @click.option("--remote", required=True, type=str, help="Remote directory path to create.")
 def mkdir(config_: str | None, remote: str) -> None:
     """Create a remote directory (mkdir -p semantics)."""
@@ -204,7 +263,13 @@ def normalize_path_cmd(path_: str) -> None:
 
 
 @cli.command(name="strip-path")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
 @click.option("--address", required=True, type=str, help="Full sftp:// address.")
 def strip_path_cmd(config_: str | None, address: str) -> None:
     """Strip 'sftp://<host>' prefix from an SFTP address."""
@@ -218,9 +283,17 @@ def strip_path_cmd(config_: str | None, address: str) -> None:
 
 
 @cli.command(name="tempfile")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
 @click.option("--ext", default="", type=str, help="Optional file extension (without leading dot).")
-@click.option("--subdir", default="", type=str, help="Optional subdirectory under sftp_destination_path.")
+@click.option(
+    "--subdir", default="", type=str, help="Optional subdirectory under sftp_destination_path."
+)
 def tempfile_cmd(config_: str | None, ext: str, subdir: str) -> None:
     """Reserve a unique remote path and print {sftp_address, url} as JSON."""
     cred = credentials(config_)
@@ -234,7 +307,13 @@ def tempfile_cmd(config_: str | None, ext: str, subdir: str) -> None:
 
 
 @cli.command(name="show-credentials")
-@click.option("--config", "config_", default=None, type=click.Path(), help="Path to a JSON/YAML config file or dir.")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
 def show_credentials(config_: str | None) -> None:
     """Print the resolved credentials as JSON (password masked)."""
     cred = credentials(config_)

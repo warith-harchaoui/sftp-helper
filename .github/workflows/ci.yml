@@ -46,7 +46,9 @@ jobs:
   lint:
     name: ruff
     runs-on: ubuntu-latest
-    continue-on-error: true
+    # Rule 15: PEP 8 is enforced, not suggested — a style violation blocks
+    # merging exactly like a failing test. Both the linter and the formatter
+    # check must exit 0 for this job (and therefore the pipeline) to pass.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,8 +57,10 @@ jobs:
           cache: pip
       - name: Install ruff
         run: pip install ruff
-      - name: Run ruff
-        run: ruff check . || true
+      - name: Lint (ruff check)
+        run: ruff check .
+      - name: Format check (ruff format --check)
+        run: ruff format --check .
 
   no-vendor-mentions:
     name: No disallowed AI-vendor mentions

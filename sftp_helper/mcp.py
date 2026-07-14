@@ -36,13 +36,11 @@ try:
     from fastapi_mcp import FastApiMCP
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
-        "The MCP surface requires the [mcp] extra. "
-        "Install with: pip install 'sftp-helper[api,mcp]'"
+        "The MCP surface requires the [mcp] extra. Install with: pip install 'sftp-helper[api,mcp]'"
     ) from exc
 
 # Reuse the exact same FastAPI app — MCP is a thin wrapper on top.
 from .api import app
-
 
 # ``FastApiMCP`` mounts an MCP endpoint on the existing FastAPI app; we
 # store the wrapped instance at module scope so downstream code (tests,

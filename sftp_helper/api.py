@@ -52,7 +52,6 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 try:
     from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -75,7 +74,6 @@ from . import (
     strip_sftp_path,
     upload,
 )
-
 
 # ---------------------------------------------------------------------------
 # App factory + shared plumbing
@@ -125,6 +123,19 @@ _SERVER_CRED: dict = _load_server_cred()
 
 
 def _cred_or_503() -> dict:
+    """Return the server credentials or raise HTTP 503 if none were loaded.
+
+    Returns
+    -------
+    dict
+        The non-empty credentials snapshot resolved at import time.
+
+    Raises
+    ------
+    HTTPException
+        With status 503 when the server was started without credentials, so
+        clients get a clean, documented failure instead of an opaque 500.
+    """
     # Guard: every network-touching endpoint calls this to guarantee we
     # emit a clean 503 when the server was started without credentials.
     if not _SERVER_CRED:
@@ -139,7 +150,7 @@ def _cred_or_503() -> dict:
     return _SERVER_CRED
 
 
-def _spool(uploaded: UploadFile, dest_dir: Path, suffix_hint: Optional[str] = None) -> Path:
+def _spool(uploaded: UploadFile, dest_dir: Path, suffix_hint: str | None = None) -> Path:
     """
     Persist an ``UploadFile`` to a temp path on disk.
 
@@ -172,8 +183,15 @@ def _spool(uploaded: UploadFile, dest_dir: Path, suffix_hint: Optional[str] = No
     return out
 
 
-def _cleanup(*paths) -> None:
-    """Best-effort cleanup — never let a tidy-up failure kill a response."""
+def _cleanup(*paths: object) -> None:
+    """Best-effort removal of temp files/dirs — a tidy-up failure never kills a response.
+
+    Parameters
+    ----------
+    *paths : object
+        One or more path-like objects (``str`` or ``Path``) to remove.
+        Directories are removed recursively; missing paths are ignored.
+    """
     for p in paths:
         try:
             path = Path(p)
@@ -186,12 +204,31 @@ def _cleanup(*paths) -> None:
 
 
 def _new_tmpdir() -> Path:
-    """Create a request-scoped temp directory under the system temp root."""
+    """Create a request-scoped temp directory under the system temp root.
+
+    Returns
+    -------
+    Path
+        A fresh, uniquely-named directory (prefix ``sftp-helper-``) that the
+        caller is responsible for cleaning up (see :func:`_cleanup`).
+    """
     return Path(tempfile.mkdtemp(prefix="sftp-helper-"))
 
 
 def _mask(cred: dict) -> dict:
-    """Never echo the SFTP password in a response body."""
+    """Return a copy of ``cred`` with the SFTP password redacted.
+
+    Parameters
+    ----------
+    cred : dict
+        Resolved credentials, potentially containing ``sftp_passwd``.
+
+    Returns
+    -------
+    dict
+        A shallow copy whose ``sftp_passwd`` (when set) is replaced by
+        ``"***"`` so it never leaks into a response body.
+    """
     masked = dict(cred)
     if masked.get("sftp_passwd"):
         masked["sftp_passwd"] = "***"
@@ -222,13 +259,17 @@ def show_credentials() -> JSONResponse:
 
 
 @app.get("/normalize-path", tags=["reads"])
-def normalize_path_endpoint(path: str = Query(..., description="Path to normalize.")) -> JSONResponse:
+def normalize_path_endpoint(
+    path: str = Query(..., description="Path to normalize."),
+) -> JSONResponse:
     """Normalize a remote path (single leading '/', no trailing '/')."""
     return JSONResponse({"path": normalize_path(path)})
 
 
 @app.get("/strip-path", tags=["reads"])
-def strip_path_endpoint(address: str = Query(..., description="Full sftp:// address.")) -> JSONResponse:
+def strip_path_endpoint(
+    address: str = Query(..., description="Full sftp:// address."),
+) -> JSONResponse:
     """Strip 'sftp://<host>' prefix from an SFTP address."""
     cred = _cred_or_503()
     return JSONResponse({"path": strip_sftp_path(address, cred)})
@@ -240,14 +281,18 @@ def strip_path_endpoint(address: str = Query(..., description="Full sftp:// addr
 
 
 @app.get("/exists", tags=["reads"])
-def exists_endpoint(remote: str = Query(..., description="Full sftp:// address or plain remote path.")) -> JSONResponse:
+def exists_endpoint(
+    remote: str = Query(..., description="Full sftp:// address or plain remote path."),
+) -> JSONResponse:
     """Return whether a remote file exists."""
     cred = _cred_or_503()
     return JSONResponse({"exists": bool(remote_file_exists(remote, cred)), "remote": remote})
 
 
 @app.get("/dir-exists", tags=["reads"])
-def dir_exists_endpoint(remote: str = Query(..., description="Remote directory path.")) -> JSONResponse:
+def dir_exists_endpoint(
+    remote: str = Query(..., description="Remote directory path."),
+) -> JSONResponse:
     """Return whether a remote directory exists."""
     cred = _cred_or_503()
     return JSONResponse({"exists": bool(remote_dir_exist(remote, cred)), "remote": remote})
@@ -262,7 +307,9 @@ def dir_exists_endpoint(remote: str = Query(..., description="Remote directory p
 def upload_endpoint(
     background: BackgroundTasks,
     file: UploadFile = File(...),
-    remote: str = Form("", description="Full sftp:// address or plain remote path (auto if empty)."),
+    remote: str = Form(
+        "", description="Full sftp:// address or plain remote path (auto if empty)."
+    ),
 ) -> JSONResponse:
     """Upload the multipart file to the SFTP server. Returns the remote address."""
     cred = _cred_or_503()
@@ -281,7 +328,9 @@ def upload_endpoint(
 def download_endpoint(
     background: BackgroundTasks,
     remote: str = Query(..., description="Full sftp:// address or plain remote path."),
-    filename: Optional[str] = Query(None, description="Suggested filename in the Content-Disposition header."),
+    filename: str | None = Query(
+        None, description="Suggested filename in the Content-Disposition header."
+    ),
 ):
     """Download a remote file. The response body is the file bytes."""
     cred = _cred_or_503()
@@ -301,7 +350,9 @@ def download_endpoint(
 
 
 @app.delete("/delete", tags=["actions"])
-def delete_endpoint(remote: str = Query(..., description="Full sftp:// address or plain remote path.")) -> JSONResponse:
+def delete_endpoint(
+    remote: str = Query(..., description="Full sftp:// address or plain remote path."),
+) -> JSONResponse:
     """Delete a remote file. Idempotent — deleting a missing file returns True."""
     cred = _cred_or_503()
     ok = delete(remote, cred)
@@ -309,7 +360,9 @@ def delete_endpoint(remote: str = Query(..., description="Full sftp:// address o
 
 
 @app.post("/mkdir", tags=["actions"])
-def mkdir_endpoint(remote: str = Form(..., description="Remote directory path to create.")) -> JSONResponse:
+def mkdir_endpoint(
+    remote: str = Form(..., description="Remote directory path to create."),
+) -> JSONResponse:
     """Create a remote directory (mkdir -p semantics)."""
     cred = _cred_or_503()
     make_remote_directory(remote, cred)
