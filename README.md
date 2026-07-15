@@ -16,13 +16,13 @@ This toolbox requires:
 
 SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
 
-# Documentation
+## Documentation
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
 
 [📋 Examples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
-# Installation
+## Installation
 
 **Prerequisites** — **Python 3.10–3.13** and **git**, cross-platform:
 
@@ -30,24 +30,30 @@ SFTP Helper is a Python library that provides utility functions for working with
 - 🐧 **Ubuntu/Debian**: `sudo apt update && sudo apt install -y python3 python3-pip git`
 - 🪟 **Windows** (PowerShell): `winget install Python.Python.3.12 Git.Git`
 
-Then install the package:
+We recommend using Python environments. Check this link if you're unfamiliar with setting one up: [🥸 Tech tips](https://harchaoui.org/warith/4ml/#install).
 
-
-## Install Package
-
-We can recommand python environments. Check this link if you don't know how
-
-[🥸 Tech tips](https://harchaoui.org/warith/4ml/#install)
+### From PyPI (recommended)
 
 ```bash
-pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2
+# Core SFTP utilities (library + argparse CLI)
+pip install sftp-helper
+
+# Optional surfaces
+pip install "sftp-helper[cli]"       # click-based CLI twin
+pip install "sftp-helper[api]"       # FastAPI HTTP surface
+pip install "sftp-helper[api,mcp]"   # MCP tools over FastAPI
 ```
 
-Or, from a checkout:
+### From source (no PyPI)
 
 ```bash
-pip install -r requirements.txt
-pip install -e .
+# Core SFTP utilities (library + argparse CLI)
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+
+# Optional surfaces
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
 ```
 
 ## Write your own configuration file
@@ -165,7 +171,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 trust a server in a non-default location, point at an extra known_hosts file
 via the optional `sftp_known_hosts` credential.
 
-# Multi-surface exposure
+## Multi-surface exposure
 
 `sftp-helper` is not just a library — the same functions are exposed
 as a CLI, a FastAPI HTTP surface, and an MCP tool set:
@@ -181,16 +187,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
 
 # MCP tools over FastAPI (needs the [api,mcp] extras)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 sftp-helper-mcp                  # serves FastAPI + MCP on port 8000
 ```
 
@@ -211,8 +217,14 @@ The competitive landscape (paramiko, pysftp, asyncssh, Fabric,
 smart-open, PyFilesystem2, lftp, Rclone, …) is analysed in
 [LANDSCAPE.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md).
 
-# Author
+## Author
+
  - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
 
-# Acknowledgements
+## Acknowledgements
+
 Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) for fruitful discussions.
+
+## License
+
+This project is licensed under the BSD-3-Clause License — see the [LICENSE](LICENSE) file for details.

@@ -16,13 +16,13 @@ Cette boîte à outils nécessite :
 
 SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires pour travailler avec des serveurs SFTP via [paramiko](https://www.paramiko.org/). La vérification de la clé d'hôte est activée par défaut — `~/.ssh/known_hosts` est chargé et les hôtes inconnus sont refusés.
 
-# Documentation
+## Documentation
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
 
 [📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
-# Installation
+## Installation
 
 **Prérequis** — **Python 3.10–3.13** et **git**, multiplateforme :
 
@@ -30,23 +30,30 @@ SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires p
 - 🐧 **Ubuntu/Debian** : `sudo apt update && sudo apt install -y python3 python3-pip git`
 - 🪟 **Windows** (PowerShell) : `winget install Python.Python.3.12 Git.Git`
 
-Puis installer le paquet :
+Nous recommandons l'utilisation d'environnements Python. Consultez ce lien si vous ne savez pas comment faire : [🥸 Conseils techniques](https://harchaoui.org/warith/4ml/#install).
 
-
-## Installer le paquet
-
-Nous recommandons l'utilisation d'environnements Python. Consultez ce lien si vous ne savez pas comment faire :
-
-[🥸 Conseils techniques](https://harchaoui.org/warith/4ml/#install)
+### Depuis PyPI (recommandé)
 
 ```bash
-pip install --force-reinstall --no-cache-dir git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2
+# Utilitaires SFTP de base (bibliothèque + CLI argparse)
+pip install sftp-helper
+
+# Surfaces optionnelles
+pip install "sftp-helper[cli]"       # jumeau CLI en click
+pip install "sftp-helper[api]"       # surface HTTP FastAPI
+pip install "sftp-helper[api,mcp]"   # outils MCP au-dessus de FastAPI
 ```
 
-Ou depuis un clone local :
+### Depuis les sources (sans PyPI)
 
 ```bash
-pip install -e ".[dev]"
+# Utilitaires SFTP de base (bibliothèque + CLI argparse)
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+
+# Surfaces optionnelles
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
 ```
 
 ## Écrire votre fichier de configuration
@@ -158,7 +165,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 `sftp_helper` ne désactive jamais la vérification de la clé d'hôte. La politique par défaut est `paramiko.RejectPolicy()` et `~/.ssh/known_hosts` est chargé automatiquement. Pour faire confiance à un serveur dont la clé n'est pas à l'emplacement par défaut, pointez sur un fichier `known_hosts` additionnel via l'identifiant optionnel `sftp_known_hosts`.
 
-# Exposition multi-surface
+## Exposition multi-surface
 
 `sftp-helper` n'est pas qu'une bibliothèque — les mêmes fonctions sont
 exposées comme CLI, comme surface HTTP FastAPI, et comme outils MCP :
@@ -174,16 +181,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
 
 # Outils MCP au-dessus de FastAPI (extras [api,mcp] nécessaires)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.2'
+pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
 sftp-helper-mcp                  # sert FastAPI + MCP sur le port 8000
 ```
 
@@ -204,8 +211,14 @@ Le paysage concurrentiel (paramiko, pysftp, asyncssh, Fabric,
 smart-open, PyFilesystem2, lftp, Rclone, …) est analysé dans
 [LANDSCAPE.md](LANDSCAPE.md).
 
-# Auteur
+## Auteur
+
  - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
 
-# Remerciements
+## Remerciements
+
 Remerciements chaleureux à [Mohamed Chelali](https://mchelali.github.io) et [Bachir Zerroug](https://www.linkedin.com/in/bachirzerroug) pour nos échanges fructueux.
+
+## Licence
+
+Ce projet est distribué sous licence BSD-3-Clause — voir le fichier [LICENSE](LICENSE) pour les détails.
