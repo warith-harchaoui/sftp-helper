@@ -32,7 +32,7 @@ Install with pip (pin the version you want):
 
 ```bash
 pip install --force-reinstall --no-cache-dir \
-    git+https://github.com/warith-harchaoui/sftp-helper.git@v2.1.0
+    git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4
 ```
 
 `sftp-helper` is built on top of [paramiko](https://www.paramiko.org/);
