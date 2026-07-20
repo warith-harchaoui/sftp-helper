@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-20
+
+### Added
+
+- **Agent skill (Claude + OpenCode).** New `skills/sftp-helper/` package with a
+  trigger-rich `SKILL.md` (third-person description, exhaustive enforced TRIGGER
+  clause + SKIP clause) and progressive-disclosure references
+  (`cli-reference.md`, `surfaces.md`, `config.md`, `triggers.md`), plus
+  `skills/README.md` with install instructions. Symlinkable into
+  `~/.claude/skills/` and `~/.opencode/skills/`.
+- **`TRIGGERS.md`** at the repo root — the user-facing, exhaustive catalogue of
+  phrasings, commands, functions, and context cues that should invoke
+  sftp-helper (and when to reach for `bucket-helper` / `youtube-helper`
+  instead). Referenced from README and LISEZMOI.
+- **Features section** in README and LISEZMOI (French mirror) enumerating every
+  operation, the four surfaces, and the strict host-key policy.
+
+### Changed
+
+- The FastAPI OpenAPI `version` is now resolved dynamically from installed
+  package metadata instead of a hard-coded literal, so it can never drift from
+  `pyproject.toml` on a release.
+
+### Fixed
+
+- `ruff format` compliance in `sftp_helper/main.py` (a `sftp.put(...)` call that
+  the formatter collapses onto one line), so the CI lint job stays green.
+
+### Notes
+
+- No public API changes — `sftp_helper.__all__` is unchanged and
+  backward-compatible. No GUI and no local-first claim are added (by design:
+  sftp-helper transfers data to/from a remote server).
+
 ## [2.2.5] - 2026-07-20
 
 ### Changed

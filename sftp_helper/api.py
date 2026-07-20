@@ -80,6 +80,29 @@ from . import (
 # ---------------------------------------------------------------------------
 
 
+def _package_version() -> str:
+    """Resolve the installed ``sftp-helper`` version for the OpenAPI ``version``.
+
+    Reading the version from installed package metadata (rather than hard-coding
+    it here) means the API version can never drift from ``pyproject.toml`` on a
+    release. Falls back to a literal only when metadata is unavailable (e.g. the
+    package is imported from a source tree that was never installed).
+
+    Returns
+    -------
+    str
+        The resolved package version, or ``"0.0.0"`` if it cannot be read.
+    """
+    # importlib.metadata is stdlib on 3.10+; guard the lookup so an odd
+    # environment (namespace packages, zip imports) never breaks app import.
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        return _pkg_version("sftp-helper")
+    except Exception:  # pragma: no cover — never fatal, just a display string
+        return "0.0.0"
+
+
 app = FastAPI(
     title="SFTP Helper API",
     description=(
@@ -87,7 +110,9 @@ app = FastAPI(
         "exists, dir-exists, mkdir, normalize-path, strip-path, tempfile, "
         "show-credentials. Strict host-key verification is always on."
     ),
-    version="2.2.2",
+    # Resolved from package metadata so the OpenAPI version tracks the release
+    # automatically and can never go stale like a hard-coded literal.
+    version=_package_version(),
     docs_url="/docs",
     redoc_url="/redoc",
 )

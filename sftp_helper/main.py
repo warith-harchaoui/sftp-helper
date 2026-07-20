@@ -457,9 +457,7 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
             with osh.progress_bar(
                 total=local_stat.st_size, desc=os.path.basename(remote_path)
             ) as bar:
-                sftp.put(
-                    local_path, remote_path, callback=_progress_callback(bar), confirm=True
-                )
+                sftp.put(local_path, remote_path, callback=_progress_callback(bar), confirm=True)
             # Preserve the original modification time so tooling that keys off
             # mtime (rsync-like sync, caches) sees a faithful copy.
             sftp.utime(remote_path, (local_stat.st_atime, local_stat.st_mtime))

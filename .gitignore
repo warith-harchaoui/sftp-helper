@@ -181,3 +181,6 @@ cython_debug/
 nomoreclaude.sh
 .secrets/
 .pypirc
+
+# private scratch (assessments, todo, notes) — never published
+.private/

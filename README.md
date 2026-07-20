@@ -16,6 +16,42 @@ This toolbox requires:
 
 SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
 
+> **Remote by design.** `sftp-helper` exists to move data to and from a *remote*
+> server, so it is deliberately **not** local-first and ships **no GUI**. For
+> cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
+> downloading media from a URL use `youtube-helper`.
+
+## Features
+
+- **Upload** a local file to the server — pass an explicit `sftp://host/path`, or
+  omit it to get a deterministic **content-hashed** name under
+  `sftp_destination_path` (identical bytes de-duplicate to the same path). Shows
+  a byte-scaled progress bar on large transfers and preserves the source mtime.
+- **Download** a remote file to disk (defaults to the remote basename), with a
+  progress bar and remote-mtime preservation.
+- **Delete** a remote file — **idempotent**: removing an absent file succeeds.
+- **Existence checks** for a remote **file** (`remote_file_exists`) and a remote
+  **directory** (`remote_dir_exist`).
+- **Create remote directories** with `mkdir -p` semantics
+  (`make_remote_directory`) — every missing intermediate level is created.
+- **Path helpers**: `normalize_path` (single leading `/`, no trailing `/`) and
+  `strip_sftp_path` (drop the `sftp://` scheme + host).
+- **`remote_tempfile`** context manager — reserve a unique random remote path
+  (optionally under a subdir, optionally with an extension) that is
+  **auto-deleted on block exit**, even if an exception propagates; hands back
+  both the `sftp://` address and its public HTTPS URL.
+- **Credentials loader** (`credentials`) resolving JSON / YAML / directory /
+  `SFTP_*` env vars / `.env`, with a masked `show-credentials` view.
+- **Strict host-key verification, always on** — `paramiko.RejectPolicy()`, no
+  opt-out; trust an extra key via the optional `sftp_known_hosts` credential.
+- **Four surfaces, one behavior** — Python library, argparse CLI (`sftp-helper`),
+  click CLI twin (`sftp-helper-click`), FastAPI HTTP surface, and MCP tools
+  (`sftp-helper-mcp`). See the [multi-surface section](#multi-surface-exposure).
+- **Agent skill** for Claude Code / Claude Desktop / OpenCode — see
+  [`skills/README.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/skills/README.md)
+  and the trigger catalogue in
+  [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
+
 ## Documentation
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
@@ -48,12 +84,12 @@ pip install "sftp-helper[api,mcp]"   # MCP tools over FastAPI
 
 ```bash
 # Core SFTP utilities (library + argparse CLI)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
 
 # Optional surfaces
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
-pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
 ```
 
 ## Write your own configuration file
@@ -187,16 +223,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
 
 # MCP tools over FastAPI (needs the [api,mcp] extras)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 sftp-helper-mcp                  # serves FastAPI + MCP on port 8000
 ```
 
@@ -210,8 +246,20 @@ docker run --rm -p 8000:8000 \
   sftp-helper
 ```
 
-An innovative GUI plan (pipeline dashboard, storage health panel,
-live transfer feed) lives in [GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md).
+### Use it as an agent skill
+
+The same operations are packaged as a **Claude / OpenCode skill** so an agent can
+run them for you without a terminal. See
+[`skills/README.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/skills/README.md)
+to install it, and
+[`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md)
+for the exhaustive catalogue of phrasings, commands, and functions that invoke it
+(and when to reach for `bucket-helper` / `youtube-helper` instead).
+
+There is **no GUI** — a forward-looking dashboard *design plan* (pipeline
+dashboard, storage-health panel, live transfer feed) lives in
+[GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md), but no
+such code ships today.
 
 The competitive landscape (paramiko, pysftp, asyncssh, Fabric,
 smart-open, PyFilesystem2, lftp, Rclone, …) is analysed in

@@ -16,6 +16,47 @@ Cette boîte à outils nécessite :
 
 SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires pour travailler avec des serveurs SFTP via [paramiko](https://www.paramiko.org/). La vérification de la clé d'hôte est activée par défaut — `~/.ssh/known_hosts` est chargé et les hôtes inconnus sont refusés.
 
+> **Distant par conception.** `sftp-helper` existe pour déplacer des données vers
+> et depuis un serveur *distant* : il n'est donc volontairement **pas**
+> local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
+> cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
+> média depuis une URL utilisez `youtube-helper`.
+
+## Fonctionnalités
+
+- **Upload** d'un fichier local vers le serveur — donnez une adresse
+  `sftp://host/path` explicite, ou omettez-la pour obtenir un nom **haché sur le
+  contenu** sous `sftp_destination_path` (des octets identiques se dédupliquent
+  vers le même chemin). Barre de progression (mise à l'échelle en octets) pour
+  les gros transferts et préservation de la date de modification (mtime).
+- **Download** d'un fichier distant vers le disque (par défaut le nom de base
+  distant), avec barre de progression et préservation du mtime distant.
+- **Delete** d'un fichier distant — **idempotent** : supprimer un fichier absent
+  réussit.
+- **Vérifications d'existence** pour un **fichier** distant (`remote_file_exists`)
+  et un **répertoire** distant (`remote_dir_exist`).
+- **Création de répertoires distants** avec la sémantique `mkdir -p`
+  (`make_remote_directory`) — chaque niveau intermédiaire manquant est créé.
+- **Helpers de chemin** : `normalize_path` (un seul `/` initial, pas de `/` final)
+  et `strip_sftp_path` (retire le schéma `sftp://` + l'hôte).
+- **Context manager `remote_tempfile`** — réserve un chemin distant aléatoire
+  unique (optionnellement sous un sous-dossier, optionnellement avec une
+  extension) **supprimé automatiquement à la sortie du bloc**, même si une
+  exception se propage ; retourne à la fois l'adresse `sftp://` et son URL HTTPS
+  publique.
+- **Chargeur d'identifiants** (`credentials`) résolvant JSON / YAML / dossier /
+  variables d'environnement `SFTP_*` / `.env`, avec une vue masquée
+  `show-credentials`.
+- **Vérification stricte de la clé d'hôte, toujours active** —
+  `paramiko.RejectPolicy()`, sans échappatoire ; faites confiance à une clé
+  supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
+- **Quatre surfaces, un seul comportement** — bibliothèque Python, CLI argparse
+  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`), surface HTTP FastAPI,
+  et outils MCP (`sftp-helper-mcp`). Voir la [section multi-surface](#exposition-multi-surface).
+- **Skill agent** pour Claude Code / Claude Desktop / OpenCode — voir
+  [`skills/README.md`](skills/README.md) et le catalogue de déclencheurs dans
+  [`TRIGGERS.md`](TRIGGERS.md).
+
 ## Documentation
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
@@ -48,12 +89,12 @@ pip install "sftp-helper[api,mcp]"   # outils MCP au-dessus de FastAPI
 
 ```bash
 # Utilitaires SFTP de base (bibliothèque + CLI argparse)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
 
 # Surfaces optionnelles
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
-pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4"
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
 ```
 
 ## Écrire votre fichier de configuration
@@ -181,16 +222,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
 
 # Outils MCP au-dessus de FastAPI (extras [api,mcp] nécessaires)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.2.4'
+pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
 sftp-helper-mcp                  # sert FastAPI + MCP sur le port 8000
 ```
 
@@ -204,8 +245,18 @@ docker run --rm -p 8000:8000 \
   sftp-helper
 ```
 
-Un plan GUI ambitieux (tableau de bord pipeline, panneau de santé
-du stockage, flux de transferts live) vit dans [GUI.md](GUI.md).
+### L'utiliser comme skill agent
+
+Les mêmes opérations sont packagées comme **skill Claude / OpenCode** afin qu'un
+agent puisse les exécuter pour vous sans terminal. Voir
+[`skills/README.md`](skills/README.md) pour l'installer, et
+[`TRIGGERS.md`](TRIGGERS.md) pour le catalogue exhaustif des formulations,
+commandes et fonctions qui l'invoquent (et quand préférer `bucket-helper` /
+`youtube-helper`).
+
+Il n'y a **aucune interface graphique** — un *plan de conception* de tableau de
+bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live)
+vit dans [GUI.md](GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
 Le paysage concurrentiel (paramiko, pysftp, asyncssh, Fabric,
 smart-open, PyFilesystem2, lftp, Rclone, …) est analysé dans

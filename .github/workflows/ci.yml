@@ -73,15 +73,25 @@ jobs:
       - name: Audit tracked files + history for disallowed AI-vendor names
         run: |
           # Flag Claude / Anthropic as WHOLE WORDS in tracked files or commit
-          # messages, EXCEPT the allowed "Claude Desktop" MCP-client product
-          # reference. `-w` gives portable word boundaries (so neutral
-          # substrings like "nomoreclaude" don't count) identically on macOS
-          # and Linux. This workflow file, lockfiles and vector art are
-          # excluded from the file scan.
-          files="$(git grep -inwI -e claude -e anthropic -- ':!*.lock' ':!*.svg' ':!.github/workflows/ci.yml' | grep -viE 'claude[ -]?desktop' || true)"
-          hist="$(git log --all --format='%H %s%n%b' | grep -iwE 'claude|anthropic' | grep -viE 'claude[ -]?desktop' || true)"
+          # messages — the point is to block Claude *attribution* (authorship,
+          # Co-Authored-By trailers, contributor surfacing), NOT to erase the
+          # legitimate product / skill-ecosystem names the docs must use.
+          #
+          # ALLOWED (standard product / ecosystem references, not attribution):
+          #   - "Claude Desktop"  — the MCP-client product
+          #   - "Claude Code"     — the CLI/agent product
+          #   - "Claude Skill(s)" — the skill-ecosystem name this repo ships into
+          #   - "Claude / OpenCode" / "Claude + OpenCode" / "Claude and OpenCode"
+          #                       — the two skill hosts named together
+          #   - "~/.claude/skills/" and ".claude/…" — skill install paths
+          # `-w` gives portable word boundaries (so neutral substrings like
+          # "nomoreclaude" don't count) identically on macOS and Linux. This
+          # workflow file, lockfiles and vector art are excluded from the scan.
+          allow='claude[ -]?desktop|claude code|claude skills?|claude ?[/+]? ?(and )?opencode|\.claude/|\.claude\b'
+          files="$(git grep -inwI -e claude -e anthropic -- ':!*.lock' ':!*.svg' ':!.github/workflows/ci.yml' | grep -viE "$allow" || true)"
+          hist="$(git log --all --format='%H %s%n%b' | grep -iwE 'claude|anthropic' | grep -viE "$allow" || true)"
           if [ -n "$files" ] || [ -n "$hist" ]; then
-            echo "::error::disallowed AI-vendor mention found (the MCP-client product reference is allowed)"
+            echo "::error::disallowed AI-vendor mention found (product/skill-ecosystem names are allowed; attribution is not)"
             printf '%s\n' "$files" "$hist"
             exit 1
           fi
