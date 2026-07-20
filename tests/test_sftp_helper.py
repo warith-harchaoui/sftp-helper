@@ -8,7 +8,7 @@ calls made to it.
 import json
 import os
 import stat as stat_mod
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import paramiko
 import pytest
@@ -211,7 +211,10 @@ def test_upload_puts_then_overwrites(mock_ssh, cred, tmp_path):
 
     assert result == target
     sftp.remove.assert_called_once_with("/var/www/uploads/hello.txt")
-    sftp.put.assert_called_once_with(str(local), "/var/www/uploads/hello.txt", confirm=True)
+    # A progress callback is now threaded through for the transfer bar.
+    sftp.put.assert_called_once_with(
+        str(local), "/var/www/uploads/hello.txt", callback=ANY, confirm=True
+    )
     sftp.utime.assert_called_once()
 
 
@@ -235,14 +238,17 @@ def test_download_calls_get_and_preserves_mtime(mock_ssh, cred, tmp_path, monkey
     sftp, _, _ = mock_ssh
     local = tmp_path / "out.txt"
 
-    # download() calls sftp.get(), then sftp.stat() to read mtime, then os.utime().
-    # Have sftp.get materialize the local file so checkfile succeeds.
-    def fake_get(remote, local_path):
+    # download() now stats first (for the bar total + mtime), then sftp.get()
+    # with a progress callback, then os.utime(). Have sftp.get materialize the
+    # local file so checkfile succeeds; accept the callback kwarg paramiko gets.
+    def fake_get(remote, local_path, callback=None):
         open(local_path, "w").close()
 
     sftp.get.side_effect = fake_get
     file_mode = stat_mod.S_IFREG | 0o644
-    sftp.stat.return_value = MagicMock(st_mode=file_mode, st_atime=10, st_mtime=20)
+    sftp.stat.return_value = MagicMock(
+        st_mode=file_mode, st_size=0, st_atime=10, st_mtime=20
+    )
 
     captured = {}
     real_utime = os.utime
@@ -256,7 +262,7 @@ def test_download_calls_get_and_preserves_mtime(mock_ssh, cred, tmp_path, monkey
 
     sftph.download(f"sftp://{cred['sftp_host']}/folder/out.txt", cred, str(local))
 
-    sftp.get.assert_called_once_with("/folder/out.txt", str(local))
+    sftp.get.assert_called_once_with("/folder/out.txt", str(local), callback=ANY)
     assert captured["times"] == (10, 20)
 
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5] - 2026-07-20
+
+### Changed
+
+- **Upload and download now show a progress bar.** `upload` (`put`) and
+  `download` (`get`) thread paramiko's transfer callback into the shared
+  `os_helper.progress_bar` (byte scaled, ETA, auto-quiet on a non-TTY), so moving
+  a large file gives live feedback. A small adapter converts paramiko's
+  cumulative `(transferred, total)` callback to the bar's delta updates; download
+  stats the remote file first to seed the bar total. Requires `os-helper>=1.5.3`.
+
 ## [2.2.4] - 2026-07-15
 
 ### Documentation

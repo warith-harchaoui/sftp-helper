@@ -22,8 +22,9 @@ from __future__ import annotations
 import os
 import secrets
 import stat as stat_mod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from typing import Any
 
 import os_helper as osh
 import paramiko
@@ -375,6 +376,35 @@ def delete(sftp_address: str, cred: dict) -> bool:
         raise Exception(f"Failed to delete SFTP file:\n\t{sftp_address}.\nError:\n\t{err}") from err
 
 
+def _progress_callback(bar: Any) -> Callable[[int, int], None]:
+    """Adapt paramiko's cumulative transfer callback to a delta-based tqdm bar.
+
+    paramiko's ``put`` / ``get`` invoke their ``callback`` with
+    ``(bytes_transferred_so_far, bytes_total)`` — a *running total*, not a delta.
+    :func:`os_helper.progress_bar` (tqdm) advances by *increments*, so this returns
+    a closure that feeds it the difference since the last call (``bar.n`` is the
+    bar's current position), giving a correct byte-scaled progress bar for either
+    direction.
+
+    Parameters
+    ----------
+    bar : tqdm.tqdm
+        The progress bar to advance (from :func:`os_helper.progress_bar`).
+
+    Returns
+    -------
+    Callable[[int, int], None]
+        A ``callback(transferred, total)`` to hand to paramiko ``put`` / ``get``.
+    """
+
+    def _cb(transferred: int, total: int) -> None:
+        """Advance the bar by the bytes moved since the previous callback."""
+        # paramiko reports cumulative bytes; tqdm wants the delta since bar.n.
+        bar.update(transferred - bar.n)
+
+    return _cb
+
+
 def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
     """
     Upload a local file to the SFTP server.
@@ -422,8 +452,14 @@ def upload(local_path: str, cred: dict, sftp_address: str = "") -> str:
             if _sftp_exists(sftp, remote_path):
                 sftp.remove(remote_path)
             # ``confirm=True`` re-stats after the put so paramiko verifies the
-            # byte count landed — cheap integrity check on the transfer.
-            sftp.put(local_path, remote_path, confirm=True)
+            # byte count landed — cheap integrity check on the transfer. The
+            # shared bar (total = local size) shows live progress on big files.
+            with osh.progress_bar(
+                total=local_stat.st_size, desc=os.path.basename(remote_path)
+            ) as bar:
+                sftp.put(
+                    local_path, remote_path, callback=_progress_callback(bar), confirm=True
+                )
             # Preserve the original modification time so tooling that keys off
             # mtime (rsync-like sync, caches) sees a faithful copy.
             sftp.utime(remote_path, (local_stat.st_atime, local_stat.st_mtime))
@@ -467,10 +503,14 @@ def download(sftp_address: str, cred: dict, local_path: str = "") -> str:
 
     try:
         with get_client_sftp(cred) as sftp:
-            sftp.get(remote_path, local_path)
-            # Copy the remote mtime/atime onto the local file so the download
-            # is timestamp-faithful, matching what ``upload`` does in reverse.
+            # Stat first: its size gives the progress bar a total (and ETA), and
+            # the same result mirrors the remote mtime/atime onto the local file
+            # below — so the download is timestamp-faithful, as ``upload`` is.
             remote_stat = sftp.stat(remote_path)
+            with osh.progress_bar(
+                total=remote_stat.st_size, desc=os.path.basename(remote_path)
+            ) as bar:
+                sftp.get(remote_path, local_path, callback=_progress_callback(bar))
             os.utime(local_path, (remote_stat.st_atime, remote_stat.st_mtime))
             # Assert the file actually materialized before reporting success.
             osh.checkfile(local_path, msg=f"Download failed for {sftp_address}")
