@@ -38,7 +38,7 @@ Représentation 2D du tableau ci-dessus.
 
 ![Carte de positionnement](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/paysage.png)
 
-La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Confort d'Utilisation ↔ Fiabilité** et **Vertical — Léger ↔ Efficacité**.
+La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Intuitif ↔ Rigoureux** et **Vertical — Simple ↔ Efficace**.
 <!-- FIGURE:END -->
 
 ## Positionnement
