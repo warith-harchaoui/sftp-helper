@@ -56,6 +56,8 @@ SFTP Helper is a Python library that provides utility functions for working with
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
 
+[🗺️ Landscape](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md)
+
 [📋 Examples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Installation
@@ -262,7 +264,8 @@ dashboard, storage-health panel, live transfer feed) lives in
 such code ships today.
 
 The competitive landscape (paramiko, pysftp, asyncssh, Fabric,
-smart-open, PyFilesystem2, lftp, Rclone, …) is analysed in
+smart-open, PyFilesystem2, lftp, Rclone, …) is analysed, with a
+positioning map, in
 [LANDSCAPE.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md).
 
 ## Author

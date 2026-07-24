@@ -184,3 +184,7 @@ nomoreclaude.sh
 
 # private scratch (assessments, todo, notes) — never published
 .private/
+
+# generated landscape/positioning CSVs (rebuilt from LANDSCAPE.md / PAYSAGE.md)
+assets/landscape.csv
+assets/paysage.csv

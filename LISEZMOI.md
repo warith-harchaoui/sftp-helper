@@ -61,6 +61,8 @@ SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires p
 
 [💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
 
+[🗺️ Paysage](https://github.com/warith-harchaoui/sftp-helper/blob/main/PAYSAGE.md)
+
 [📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Installation
@@ -259,8 +261,8 @@ bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live
 vit dans [GUI.md](GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
 Le paysage concurrentiel (paramiko, pysftp, asyncssh, Fabric,
-smart-open, PyFilesystem2, lftp, Rclone, …) est analysé dans
-[LANDSCAPE.md](LANDSCAPE.md).
+smart-open, PyFilesystem2, lftp, Rclone, …) est analysé, avec une carte
+de positionnement, dans [PAYSAGE.md](PAYSAGE.md).
 
 ## Auteur
 
