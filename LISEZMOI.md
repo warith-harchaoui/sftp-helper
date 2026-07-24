@@ -14,7 +14,7 @@ Cette boîte à outils nécessite :
 
 [![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 
-SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires pour travailler avec des serveurs SFTP via [paramiko](https://www.paramiko.org/). La vérification de la clé d'hôte est activée par défaut — `~/.ssh/known_hosts` est chargé et les hôtes inconnus sont refusés.
+SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer avec des serveurs SFTP via [paramiko](https://www.paramiko.org/). La vérification de la clé d'hôte est active par défaut : `~/.ssh/known_hosts` est chargé et les hôtes inconnus sont refusés.
 
 > **Distant par conception.** `sftp-helper` existe pour déplacer des données vers
 > et depuis un serveur *distant* : il n'est donc volontairement **pas**
@@ -73,7 +73,7 @@ SFTP Helper est une bibliothèque Python qui fournit des fonctions utilitaires p
 - 🐧 **Ubuntu/Debian** : `sudo apt update && sudo apt install -y python3 python3-pip git`
 - 🪟 **Windows** (PowerShell) : `winget install Python.Python.3.12 Git.Git`
 
-Nous recommandons l'utilisation d'environnements Python. Consultez ce lien si vous ne savez pas comment faire : [🥸 Conseils techniques](https://harchaoui.org/warith/4ml/#install).
+On recommande de travailler dans un environnement Python. Si vous ne savez pas en créer un, voir [🥸 Conseils techniques](https://harchaoui.org/warith/4ml/#install).
 
 ### Depuis PyPI (recommandé)
 
@@ -101,7 +101,7 @@ pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp
 
 ## Écrire votre fichier de configuration
 
-Un template prêt-à-remplir est committé dans [`sftp_config.json.example`](sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored donc impossible de committer des secrets par accident :
+Un template prêt à remplir est committé dans [`sftp_config.json.example`](sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored, donc pas de secret committé par accident :
 
 ```bash
 cp sftp_config.json.example sftp_config.json
@@ -249,11 +249,11 @@ docker run --rm -p 8000:8000 \
 
 ### L'utiliser comme skill agent
 
-Les mêmes opérations sont packagées comme **skill Claude / OpenCode** afin qu'un
-agent puisse les exécuter pour vous sans terminal. Voir
+Les mêmes opérations sont packagées comme **skill Claude / OpenCode** pour qu'un
+agent puisse les exécuter à votre place, sans terminal. Voir
 [`skills/README.md`](skills/README.md) pour l'installer, et
 [`TRIGGERS.md`](TRIGGERS.md) pour le catalogue exhaustif des formulations,
-commandes et fonctions qui l'invoquent (et quand préférer `bucket-helper` /
+commandes et fonctions qui l'invoquent (et des cas où préférer `bucket-helper` /
 `youtube-helper`).
 
 Il n'y a **aucune interface graphique** — un *plan de conception* de tableau de

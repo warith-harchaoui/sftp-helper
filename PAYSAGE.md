@@ -54,16 +54,16 @@ et il garde `paramiko` comme seule dépendance obligatoire — on ne paie
 les surfaces FastAPI / MCP / click que si on installe leurs extras. Ce
 compromis est le principal différenciateur face à `pysftp` (non
 maintenu depuis 2016, sans les correctifs de sécurité récents) et face
-à `paramiko` brut (correct, mais qui demande 40 lignes de code avant de
-pouvoir faire un `.put()`).
+à `paramiko` brut (correct, mais qui réclame 40 lignes avant le moindre
+`.put()`).
 
 Quelques précisions derrière les notes. Sur la **vérification de la clé
 d'hôte**, `sftp-helper` obtient le maximum car il applique par défaut
 `RejectPolicy` sans option de contournement ; `paramiko` et `pysftp` ne
 vérifient que si on le câble soi-même, tandis qu'`asyncssh` et `Rclone`
-vérifient par défaut. Sur le **fichier distant temporaire**, le
-gestionnaire de contexte `remote_tempfile` de `sftp-helper` est la seule
-implémentation de première classe à nettoyage automatique du domaine.
+vérifient par défaut. Sur le **fichier distant temporaire**, le context
+manager `remote_tempfile` de `sftp-helper` est la seule implémentation
+de première classe à nettoyage automatique du domaine.
 Sa note **multi-surface** reflète argparse + click + FastAPI + MCP
 derrière les mêmes signatures de fonctions, et son **chargeur de config**
 délègue à `os-helper` (JSON / YAML / env / .env). `Rclone` décroche une
