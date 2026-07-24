@@ -260,10 +260,6 @@ Il n'y a **aucune interface graphique** — un *plan de conception* de tableau d
 bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live)
 vit dans [GUI.md](GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
-Le paysage concurrentiel (paramiko, pysftp, asyncssh, Fabric,
-smart-open, PyFilesystem2, lftp, Rclone, …) est analysé, avec une carte
-de positionnement, dans [PAYSAGE.md](PAYSAGE.md).
-
 ## Auteur
 
  - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)

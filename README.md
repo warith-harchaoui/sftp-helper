@@ -263,11 +263,6 @@ dashboard, storage-health panel, live transfer feed) lives in
 [GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md), but no
 such code ships today.
 
-The competitive landscape (paramiko, pysftp, asyncssh, Fabric,
-smart-open, PyFilesystem2, lftp, Rclone, …) is analysed, with a
-positioning map, in
-[LANDSCAPE.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md).
-
 ## Author
 
  - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
