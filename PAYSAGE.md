@@ -17,6 +17,7 @@ local à évaluer ici.
 
 ## En un coup d'œil
 
+<!-- TABLE:START -->
 | Transfert SFTP | Vérification stricte de la clé d'hôte | Ergonomie pipelines d'IA | Fichier distant temporaire à nettoyage auto | Multi-surface | Chargeur de config | État de maintenance | Installation légère |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **sftp-helper** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
@@ -28,14 +29,17 @@ local à évaluer ici.
 | PyFilesystem2 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
 | lftp | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | Rclone | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+<!-- TABLE:END -->
 
 ## Carte de positionnement
 
+<!-- FIGURE:START -->
 Représentation 2D du tableau ci-dessus.
 
 ![Carte de positionnement](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/paysage.png)
 
-La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Ergonomie ↔ Maintenance** et **Vertical — Installation ↔ Surface**.
+La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Confort d'Utilisation ↔ Fiabilité** et **Vertical — Léger ↔ Efficacité**.
+<!-- FIGURE:END -->
 
 ## Positionnement
 

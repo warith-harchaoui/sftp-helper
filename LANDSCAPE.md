@@ -15,6 +15,7 @@ local-first mode to score here.
 
 ## At a glance
 
+<!-- TABLE:START -->
 | SFTP Transfer | Strict host-key verification | AI-pipeline ergonomics | Temp remote file with auto-cleanup | Multi-surface | Config loader | Maintenance status | Light install |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **sftp-helper** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
@@ -26,14 +27,17 @@ local-first mode to score here.
 | PyFilesystem2 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
 | lftp | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | Rclone | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+<!-- TABLE:END -->
 
 ## Positioning map
 
+<!-- FIGURE:START -->
 2D representation of the table above.
 
 ![Positioning map](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/landscape.png)
 
-The map is a 2-D summary of the seven criteria, so read it as a shape, not a scoreboard. `sftp-helper` is at the top-right corner. The axes read **Horizontal — Ergonomics ↔ Maintenance** and **Vertical — Install ↔ Surface**.
+The map is a 2-D summary of the seven criteria, so read it as a shape, not a scoreboard. `sftp-helper` is at the top-right corner. The axes read **Horizontal — Streamlined ↔ Secure** and **Vertical — Lightweight ↔ Versatile**.
+<!-- FIGURE:END -->
 
 ## Positioning
 
