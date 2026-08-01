@@ -2,9 +2,7 @@
 
 This is the user-facing, exhaustive catalogue of what `sftp-helper` can do and
 the natural-language phrasings, commands, functions, and context cues that should
-invoke it — whether you call it yourself or drive it as a Claude / OpenCode
-**skill** (see [`skills/sftp-helper/SKILL.md`](skills/sftp-helper/SKILL.md) and
-its [`references/triggers.md`](skills/sftp-helper/references/triggers.md)).
+invoke it.
 
 `sftp-helper` moves **files** to and from a **remote SFTP server over SSH**, with
 strict host-key verification always on. It is **not** local-first (its whole
@@ -13,7 +11,7 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 
 ## Operations → how to invoke
 
-| Intent | CLI | Library | API / MCP |
+| Intent | CLI | Library | API |
 |--------|-----|---------|-----------|
 | Upload a local file | `sftp-helper upload` | `upload` | `POST /upload` |
 | Download a remote file | `sftp-helper download` | `download` | `GET /download` |
@@ -27,7 +25,7 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 | Show resolved credentials (masked) | `sftp-helper show-credentials` | `credentials` | `GET /show-credentials` |
 
 Every operation is also reachable through the click CLI (`sftp-helper-click …`,
-same flags) and as MCP tools (`sftp-helper-mcp`).
+same flags).
 
 ## Natural-language phrasings that should fire
 
@@ -43,7 +41,7 @@ same flags) and as MCP tools (`sftp-helper-mcp`).
 - **Temp / stage-and-share**: "reserve a temp path that deletes itself", "stage a
   file and give me a live URL for a consumer".
 - **Credentials**: "load / show my SFTP credentials (masked)".
-- **Surfaces**: "run the sftp API / MCP server", "install sftp-helper".
+- **Surfaces**: "run the sftp API server", "install sftp-helper".
 
 ## Context cues it accepts
 
@@ -69,7 +67,6 @@ same flags) and as MCP tools (`sftp-helper-mcp`).
 
 - [`README.md`](README.md) — features, install, quick start.
 - [`EXAMPLES.md`](EXAMPLES.md) — runnable recipes.
-- [`skills/README.md`](skills/README.md) — installing this as an agent skill.
 - [`LANDSCAPE.md`](LANDSCAPE.md) — how sftp-helper compares to paramiko, pysftp,
   asyncssh, Fabric, smart-open, PyFilesystem2, lftp, Rclone.
 - [`GUI.md`](GUI.md) — a *design plan* for a possible future dashboard (no GUI

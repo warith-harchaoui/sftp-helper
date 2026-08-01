@@ -51,7 +51,7 @@ découverte des identifiants via `os-helper`, exposition multi-surface).
 Il ne cherche délibérément *pas* à concurrencer `Fabric` sur
 l'orchestration de tâches ni `Rclone` sur la réplication multi-backend,
 et il garde `paramiko` comme seule dépendance obligatoire — on ne paie
-les surfaces FastAPI / MCP / click que si on installe leurs extras. Ce
+les surfaces FastAPI / click que si on installe leurs extras. Ce
 compromis est le principal différenciateur face à `pysftp` (non
 maintenu depuis 2016, sans les correctifs de sécurité récents) et face
 à `paramiko` brut (correct, mais qui réclame 40 lignes avant le moindre
@@ -64,7 +64,7 @@ vérifient que si on le câble soi-même, tandis qu'`asyncssh` et `Rclone`
 vérifient par défaut. Sur le **fichier distant temporaire**, le context
 manager `remote_tempfile` de `sftp-helper` est la seule implémentation
 de première classe à nettoyage automatique du domaine.
-Sa note **multi-surface** reflète argparse + click + FastAPI + MCP
+Sa note **multi-surface** reflète argparse + click + FastAPI
 derrière les mêmes signatures de fonctions, et son **chargeur de config**
 délègue à `os-helper` (JSON / YAML / env / .env). `Rclone` décroche une
 bonne note de config grâce à son propre format et à une surface REST via
@@ -75,7 +75,7 @@ et malaisé à piloter depuis Python.
 
 - **`sftp-helper`** — préparation SFTP pour les pipelines d'IA : uploads
   par lots, fichiers de travail distants temporaires, hygiène stricte de
-  la clé d'hôte, surfaces CLI + HTTP + MCP en un coup.
+  la clé d'hôte, surfaces CLI + HTTP en un coup.
 - **`paramiko`** — vous avez besoin de primitives SSH bas niveau
   (redirection de ports, sessions interactives, algorithmes de clé sur
   mesure) et vous êtes prêt à câbler la politique de clé d'hôte

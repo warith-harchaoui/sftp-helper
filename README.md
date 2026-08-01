@@ -44,12 +44,10 @@ SFTP Helper is a Python library that provides utility functions for working with
   `SFTP_*` env vars / `.env`, with a masked `show-credentials` view.
 - **Strict host-key verification, always on** — `paramiko.RejectPolicy()`, no
   opt-out; trust an extra key via the optional `sftp_known_hosts` credential.
-- **Four surfaces, one behavior** — Python library, argparse CLI (`sftp-helper`),
-  click CLI twin (`sftp-helper-click`), FastAPI HTTP surface, and MCP tools
-  (`sftp-helper-mcp`). See the [multi-surface section](#multi-surface-exposure).
-- **Agent skill** for Claude Code / Claude Desktop / OpenCode — see
-  [`skills/README.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/skills/README.md)
-  and the trigger catalogue in
+- **Three surfaces, one behavior** — Python library, argparse CLI (`sftp-helper`),
+  click CLI twin (`sftp-helper-click`), and FastAPI HTTP surface. See the
+  [multi-surface section](#multi-surface-exposure).
+- Trigger catalogue in
   [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
 ## Documentation
@@ -79,19 +77,17 @@ pip install sftp-helper
 # Optional surfaces
 pip install "sftp-helper[cli]"       # click-based CLI twin
 pip install "sftp-helper[api]"       # FastAPI HTTP surface
-pip install "sftp-helper[api,mcp]"   # MCP tools over FastAPI
 ```
 
 ### From source (no PyPI)
 
 ```bash
 # Core SFTP utilities (library + argparse CLI)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
 
 # Optional surfaces
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
-pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
 ```
 
 ## Write your own configuration file
@@ -212,7 +208,7 @@ via the optional `sftp_known_hosts` credential.
 ## Multi-surface exposure
 
 `sftp-helper` is not just a library — the same functions are exposed
-as a CLI, a FastAPI HTTP surface, and an MCP tool set:
+as a CLI and a FastAPI HTTP surface:
 
 ```bash
 # Python library (default)
@@ -225,20 +221,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
-
-# MCP tools over FastAPI (needs the [api,mcp] extras)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
-sftp-helper-mcp                  # serves FastAPI + MCP on port 8000
 ```
 
-Docker image (HTTP + MCP on port 8000):
+Docker image (HTTP on port 8000):
 
 ```bash
 docker build -t sftp-helper .
@@ -248,13 +240,7 @@ docker run --rm -p 8000:8000 \
   sftp-helper
 ```
 
-### Use it as an agent skill
-
-The same operations are packaged as a **Claude / OpenCode skill** so an agent can
-run them for you without a terminal. See
-[`skills/README.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/skills/README.md)
-to install it, and
-[`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md)
+See [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md)
 for the exhaustive catalogue of phrasings, commands, and functions that invoke it
 (and when to reach for `bucket-helper` / `youtube-helper` instead).
 

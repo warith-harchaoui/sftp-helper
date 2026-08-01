@@ -50,12 +50,10 @@ SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer
 - **Vérification stricte de la clé d'hôte, toujours active** —
   `paramiko.RejectPolicy()`, sans échappatoire ; faites confiance à une clé
   supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
-- **Quatre surfaces, un seul comportement** — bibliothèque Python, CLI argparse
-  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`), surface HTTP FastAPI,
-  et outils MCP (`sftp-helper-mcp`). Voir la [section multi-surface](#exposition-multi-surface).
-- **Skill agent** pour Claude Code / Claude Desktop / OpenCode — voir
-  [`skills/README.md`](skills/README.md) et le catalogue de déclencheurs dans
-  [`TRIGGERS.md`](TRIGGERS.md).
+- **Trois surfaces, un seul comportement** — bibliothèque Python, CLI argparse
+  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`), et surface HTTP FastAPI.
+  Voir la [section multi-surface](#exposition-multi-surface).
+- Catalogue de déclencheurs dans [`TRIGGERS.md`](TRIGGERS.md).
 
 ## Documentation
 
@@ -84,19 +82,17 @@ pip install sftp-helper
 # Surfaces optionnelles
 pip install "sftp-helper[cli]"       # jumeau CLI en click
 pip install "sftp-helper[api]"       # surface HTTP FastAPI
-pip install "sftp-helper[api,mcp]"   # outils MCP au-dessus de FastAPI
 ```
 
 ### Depuis les sources (sans PyPI)
 
 ```bash
 # Utilitaires SFTP de base (bibliothèque + CLI argparse)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
 
 # Surfaces optionnelles
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
-pip install "sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0"
+pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
 ```
 
 ## Écrire votre fichier de configuration
@@ -211,7 +207,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 ## Exposition multi-surface
 
 `sftp-helper` n'est pas qu'une bibliothèque — les mêmes fonctions sont
-exposées comme CLI, comme surface HTTP FastAPI, et comme outils MCP :
+exposées comme CLI et comme surface HTTP FastAPI :
 
 ```bash
 # Bibliothèque Python (par défaut)
@@ -224,20 +220,16 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
+pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
+pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
-
-# Outils MCP au-dessus de FastAPI (extras [api,mcp] nécessaires)
-pip install 'sftp-helper[api,mcp] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.3.0'
-sftp-helper-mcp                  # sert FastAPI + MCP sur le port 8000
 ```
 
-Image Docker (HTTP + MCP sur le port 8000) :
+Image Docker (HTTP sur le port 8000) :
 
 ```bash
 docker build -t sftp-helper .
@@ -247,12 +239,7 @@ docker run --rm -p 8000:8000 \
   sftp-helper
 ```
 
-### L'utiliser comme skill agent
-
-Les mêmes opérations sont packagées comme **skill Claude / OpenCode** pour qu'un
-agent puisse les exécuter à votre place, sans terminal. Voir
-[`skills/README.md`](skills/README.md) pour l'installer, et
-[`TRIGGERS.md`](TRIGGERS.md) pour le catalogue exhaustif des formulations,
+Voir [`TRIGGERS.md`](TRIGGERS.md) pour le catalogue exhaustif des formulations,
 commandes et fonctions qui l'invoquent (et des cas où préférer `bucket-helper` /
 `youtube-helper`).
 

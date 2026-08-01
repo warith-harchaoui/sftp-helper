@@ -33,8 +33,8 @@ The GUI's job is to answer those questions instantly.
 - One toggle per row: **"Detach from cleanup"** — flips the file from
   temporary (auto-deleted at run end) to persistent. Undo is a
   first-class button, not a dialog box.
-- Every row has a **"Copy MCP invocation"** button — pastes the exact
-  `sftp-helper-mcp` tool call that would recreate the operation.
+- Every row has a **"Copy CLI invocation"** button — pastes the exact
+  `sftp-helper` command that would recreate the operation.
 
 ### 2. Storage Health Panel
 
@@ -115,7 +115,7 @@ process using the same credential set. Bindings:
 - Not a filemanager replacement.
 - Not a hosted SaaS.
 - Not a substitute for the CLI in CI (the dashboard's actions all
-  emit the equivalent CLI / MCP invocation for replay).
+  emit the equivalent CLI invocation for replay).
 
 ## Success metric
 

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sftp-helper"
-version = "2.3.0"
-description = "SFTP Helper — utility functions for working with SFTP servers via paramiko, exposed as library, argparse CLI, click CLI, FastAPI HTTP surface and MCP tools. Strict host-key verification, credentials loader, upload / download / list / remove / exists / remote_tempfile context manager."
+version = "2.4.0"
+description = "SFTP Helper — utility functions for working with SFTP servers via paramiko, exposed as library, argparse CLI, click CLI, and FastAPI HTTP surface. Strict host-key verification, credentials loader, upload / download / list / remove / exists / remote_tempfile context manager."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = {text = "BSD-3-Clause"}
@@ -42,14 +42,6 @@ api = [
     "uvicorn>=0.30,<1",
     "python-multipart>=0.0.9,<1",
 ]
-# MCP surface (sftp_helper.mcp). Depends on the `api` extra
-# — fastapi-mcp wraps the FastAPI app.
-mcp = [
-    "fastapi-mcp>=0.3,<1",
-    "fastapi>=0.111,<1",
-    "uvicorn>=0.30,<1",
-    "python-multipart>=0.0.9,<1",
-]
 # `dev` keeps the bar low for CI — pytest + httpx (for FastAPI TestClient)
 # + click (so the click CLI import always resolves in tests) + pyyaml
 # (used by the credentials tests to write YAML configs).
@@ -60,7 +52,6 @@ dev = [
     "click>=8.1,<9",
     "fastapi>=0.111,<1",
     "python-multipart>=0.0.9,<1",
-    "fastapi-mcp>=0.3,<1",
 ]
 
 [project.scripts]
@@ -68,8 +59,6 @@ dev = [
 sftp-helper = "sftp_helper.cli_argparse:main"
 # click-based twin — install with [cli] extra.
 sftp-helper-click = "sftp_helper.cli_click:cli"
-# MCP server (over FastAPI) — install with [api,mcp] extras.
-sftp-helper-mcp = "sftp_helper.mcp:main"
 
 [project.urls]
 Homepage = "https://github.com/warith-harchaoui/sftp-helper"

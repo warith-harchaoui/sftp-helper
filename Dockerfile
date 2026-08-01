@@ -4,8 +4,8 @@
 #
 # Two-stage build: the base stage pulls the system deps needed for
 # paramiko / cryptography (no compiler — everything installs from wheels)
-# and installs the package with the [api,mcp] extras so the container
-# can serve the HTTP + MCP surfaces out of the box.
+# and installs the package with the [api] extra so the container can
+# serve the HTTP surface out of the box.
 #
 # The container reads credentials from either:
 #   - the file mounted at $SFTP_HELPER_CONFIG (bind-mount at runtime), or
@@ -15,7 +15,7 @@
 # Build:
 #   docker build -t sftp-helper .
 #
-# Run (HTTP + MCP on 0.0.0.0:8000, credentials via env):
+# Run (HTTP on 0.0.0.0:8000, credentials via env):
 #   docker run --rm -p 8000:8000 \
 #     -e SFTP_HOST=sftp.example.com \
 #     -e SFTP_LOGIN=alice \
@@ -58,7 +58,7 @@ COPY --chown=app:app pyproject.toml README.md LICENSE ./
 COPY --chown=app:app sftp_helper ./sftp_helper
 
 RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir '.[api,mcp]'
+ && pip install --no-cache-dir '.[api]'
 
 # --- runtime ----------------------------------------------------------------
 USER app

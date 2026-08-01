@@ -48,7 +48,7 @@ flag, `os-helper`-based credential discovery, multi-surface exposure).
 It intentionally does *not* try to compete with `Fabric` on task
 orchestration or with `Rclone` on multi-backend replication, and it
 keeps `paramiko` as the only mandatory dependency — you only pay for
-the FastAPI / MCP / click surfaces if you install their extras. That
+the FastAPI / click surfaces if you install their extras. That
 trade-off is the main differentiator against `pysftp` (unmaintained
 since 2016, missing recent security fixes) and against raw `paramiko`
 (correct, but requires 40 lines of boilerplate before you can `.put()`
@@ -60,7 +60,7 @@ opt-out flag; `paramiko` and `pysftp` only verify if you wire it
 yourself, while `asyncssh` and `Rclone` verify by default. On
 **temp remote file**, `sftp-helper`'s `remote_tempfile` context manager
 is the only first-class, auto-cleaning implementation in the field. Its
-**multi-surface** score reflects argparse + click + FastAPI + MCP behind
+**multi-surface** score reflects argparse + click + FastAPI behind
 the same function signatures, and its **config loader** delegates to
 `os-helper` (JSON / YAML / env / .env). `Rclone` earns a strong config
 score for its own config format and a REST surface via `rclone rcd`,
@@ -71,7 +71,7 @@ Python.
 
 - **`sftp-helper`** — SFTP prep for AI pipelines: batch uploads,
   temporary remote scratch files, strict host-key hygiene, one-shot
-  CLI + HTTP + MCP surfaces.
+  CLI + HTTP surfaces.
 - **`paramiko`** — you need low-level SSH primitives (port forwarding,
   interactive sessions, custom key algorithms) and are prepared to
   wire the host-key policy yourself.
