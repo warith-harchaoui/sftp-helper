@@ -23,12 +23,12 @@ local à évaluer ici.
 | **sftp-helper** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | paramiko | ⭐⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | pysftp | ⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ |
-| Fabric | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Fabric | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 | asyncssh | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 | smart-open | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| PyFilesystem2 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| lftp | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| Rclone | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| PyFilesystem2 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| lftp | ⭐⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| Rclone | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
 <!-- TABLE:END -->
 
 ## Carte de positionnement
@@ -38,7 +38,7 @@ Représentation 2D du tableau ci-dessus.
 
 ![Carte de positionnement](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/paysage.png)
 
-La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Intuitif ↔ Rigoureux** et **Vertical — Simple ↔ Efficace**.
+La carte est un résumé en 2D des 7 critères : à lire comme une forme, pas comme un classement. « sftp-helper » se situe dans le coin en haut à droite. Les axes se lisent **Horizontal — Intuitif ↔ Rigoureux** et **Vertical — Efficace ↔ Automatisé**.
 <!-- FIGURE:END -->
 
 ## Positionnement
@@ -63,7 +63,8 @@ d'hôte**, `sftp-helper` obtient le maximum car il applique par défaut
 vérifient que si on le câble soi-même, tandis qu'`asyncssh` et `Rclone`
 vérifient par défaut. Sur le **fichier distant temporaire**, le context
 manager `remote_tempfile` de `sftp-helper` est la seule implémentation
-de première classe à nettoyage automatique du domaine.
+de première classe à nettoyage automatique parmi les bibliothèques Python
+retenues ici — seul le binaire `Rclone` s'en approche.
 Sa note **multi-surface** reflète argparse + click + FastAPI
 derrière les mêmes signatures de fonctions, et son **chargeur de config**
 délègue à `os-helper` (JSON / YAML / env / .env). `Rclone` décroche une
