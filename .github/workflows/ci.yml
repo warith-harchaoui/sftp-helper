@@ -18,7 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        # Super-light gate: one Python. The full multi-version sweep runs
+        # locally before push; CI stays a fast, fully-blocking check.
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout
@@ -29,11 +31,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-
-      - name: System deps (ffmpeg)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
 
       - name: Install package + dev extras
         run: |

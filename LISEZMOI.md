@@ -1,8 +1,8 @@
 # SFTP Helper
 
-[🇫🇷](LISEZMOI.md) · [🇬🇧](README.md)
+[🇫🇷](https://github.com/warith-harchaoui/sftp-helper/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/sftp-helper/blob/main/README.md)
 
-[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
+[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
 
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 
@@ -12,7 +12,7 @@ Cette boîte à outils nécessite :
 
 [🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
 
-[![logo](assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
+[![logo](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 
 SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer avec des serveurs SFTP via [paramiko](https://www.paramiko.org/). La vérification de la clé d'hôte est active par défaut : `~/.ssh/known_hosts` est chargé et les hôtes inconnus sont refusés.
 
@@ -53,7 +53,7 @@ SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer
 - **Trois surfaces, un seul comportement** — bibliothèque Python, CLI argparse
   (`sftp-helper`), jumeau CLI click (`sftp-helper-click`), et surface HTTP FastAPI.
   Voir la [section multi-surface](#exposition-multi-surface).
-- Catalogue de déclencheurs dans [`TRIGGERS.md`](TRIGGERS.md).
+- Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
 ## Documentation
 
@@ -88,16 +88,16 @@ pip install "sftp-helper[api]"       # surface HTTP FastAPI
 
 ```bash
 # Utilitaires SFTP de base (bibliothèque + CLI argparse)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install sftp-helper
 
 # Surfaces optionnelles
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install "sftp-helper[cli]"
+pip install "sftp-helper[api]"
 ```
 
 ## Écrire votre fichier de configuration
 
-Un template prêt à remplir est committé dans [`sftp_config.json.example`](sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored, donc pas de secret committé par accident :
+Un template prêt à remplir est committé dans [`sftp_config.json.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored, donc pas de secret committé par accident :
 
 ```bash
 cp sftp_config.json.example sftp_config.json
@@ -220,11 +220,11 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
+pip install "sftp-helper[cli]"
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
+pip install "sftp-helper[api]"
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
 ```
@@ -239,13 +239,13 @@ docker run --rm -p 8000:8000 \
   sftp-helper
 ```
 
-Voir [`TRIGGERS.md`](TRIGGERS.md) pour le catalogue exhaustif des formulations,
+Voir [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md) pour le catalogue exhaustif des formulations,
 commandes et fonctions qui l'invoquent (et des cas où préférer `bucket-helper` /
 `youtube-helper`).
 
 Il n'y a **aucune interface graphique** — un *plan de conception* de tableau de
 bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live)
-vit dans [GUI.md](GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
+vit dans [GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
 ## Auteur
 
@@ -257,4 +257,4 @@ Remerciements chaleureux à [Mohamed Chelali](https://mchelali.github.io) et [Ba
 
 ## Licence
 
-Ce projet est distribué sous licence BSD-3-Clause — voir le fichier [LICENSE](LICENSE) pour les détails.
+Ce projet est distribué sous licence BSD-3-Clause — voir le fichier [LICENSE](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) pour les détails.

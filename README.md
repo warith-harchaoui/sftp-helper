@@ -2,7 +2,7 @@
 
 [🇫🇷](https://github.com/warith-harchaoui/sftp-helper/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/sftp-helper/blob/main/README.md)
 
-[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
+[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers` developped for building Artificial Intelligence
 
@@ -83,11 +83,11 @@ pip install "sftp-helper[api]"       # FastAPI HTTP surface
 
 ```bash
 # Core SFTP utilities (library + argparse CLI)
-pip install "git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install sftp-helper
 
 # Optional surfaces
-pip install "sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
-pip install "sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0"
+pip install "sftp-helper[cli]"
+pip install "sftp-helper[api]"
 ```
 
 ## Write your own configuration file
@@ -221,11 +221,11 @@ sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
 sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
-pip install 'sftp-helper[cli] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
+pip install "sftp-helper[cli]"
 sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
-pip install 'sftp-helper[api] @ git+https://github.com/warith-harchaoui/sftp-helper.git@v2.4.0'
+pip install "sftp-helper[api]"
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
 ```
@@ -259,4 +259,4 @@ Special thanks to [Mohamed Chelali](https://mchelali.github.io) and [Bachir Zerr
 
 ## License
 
-This project is licensed under the BSD-3-Clause License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD-3-Clause License — see the [LICENSE](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) file for details.

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-08-02
+
+Adopts the hardened AI Helpers foundation and tightens the CI gate.
+
+### Changed
+
+- **Requires os-helper 2.x** (`os-helper>=2.0.0,<3`, was `>=1.5.3`). The shared
+  transfer progress bar (`osh.progress_bar`, used by upload / download) now
+  comes from the stable 2.x foundation.
+- **CI trimmed to a super-light gate:** the test matrix drops to a single Python
+  (the full multi-version sweep runs locally before push), and the vestigial
+  `ffmpeg` system-deps step (a template leftover; sftp-helper never touches
+  ffmpeg) is removed. Lint stays fully blocking (`ruff check` + `ruff format
+  --check`).
+
+### Fixed
+
+- README / LISEZMOI / EXAMPLES install commands no longer self-pin to a git tag
+  (`@v2.4.0`); they use `pip install sftp-helper` (and `"sftp-helper[cli]"` /
+  `"sftp-helper[api]"`), which always resolves to the latest published release.
+
+### Added
+
+- `tests/test_readme_install_pin.py` guards against the stale git self-pin ever
+  returning to any Markdown file.
+
 ## [2.4.0] - 2026-08-01
 
 ### Removed
