@@ -35,9 +35,10 @@ pip install --force-reinstall --no-cache-dir \
     sftp-helper
 ```
 
-`sftp-helper` is built on top of [paramiko](https://www.paramiko.org/);
-no extra system dependency is needed (paramiko ships its own OpenSSL
-bindings).
+`sftp-helper` drives the system OpenSSH `sftp` client. It ships on macOS,
+most Linux distributions, and Windows 10 1809+ / Server 2019+; if `sftp` is
+not on your `PATH`, install your platform's `openssh-client` package (on
+Windows, enable the "OpenSSH Client" optional feature).
 
 ## Load credentials
 
@@ -53,8 +54,10 @@ cred = sftph.credentials("path/to/sftp_config.json")
 cred = sftph.credentials()
 ```
 
-Required keys: `sftp_host`, `sftp_login`, `sftp_passwd`,
-`sftp_destination_path`, `sftp_https`. Optional keys:
+Required keys: `sftp_host`, `sftp_login`, `sftp_https`. Optional keys:
+`sftp_key` (path to your SSH key — private key or its `.pub`; empty ⇒ SSH
+agent + default `~/.ssh` identities), `sftp_passwd` (password fallback, needs
+`sshpass`), `sftp_destination_path` (default: server root `/`),
 `sftp_port` (default `22`), `sftp_known_hosts` (extra known-hosts file).
 
 ## Upload / download / delete
@@ -63,7 +66,7 @@ Required keys: `sftp_host`, `sftp_login`, `sftp_passwd`,
 # Upload a local file. If sftp_address is empty, sftp-helper builds a
 # content-hashed name under cred["sftp_destination_path"].
 remote_uri = sftph.upload("report.pdf", cred)
-# remote_uri is the full sftp:// or remote-path form returned by paramiko.
+# remote_uri is the full sftp:// or remote-path form of the destination.
 
 # Or upload to a deterministic destination:
 sftph.upload("report.pdf", cred, "/inbox/report.pdf")
@@ -124,8 +127,8 @@ with sftph.remote_tempfile(cred, ext="mp4", subdir="renders/2026") as (addr, url
 
 ## Strict host-key verification
 
-`sftp-helper` never disables host-key verification. The default policy
-is `paramiko.RejectPolicy()` and `~/.ssh/known_hosts` is loaded
+`sftp-helper` never disables host-key verification. Every `sftp` call
+passes `StrictHostKeyChecking=yes` and `~/.ssh/known_hosts` is consulted
 automatically. To trust a server whose key lives in a non-default
 location, point at the extra known-hosts file via the optional
 `sftp_known_hosts` credential:
@@ -136,9 +139,9 @@ cred["sftp_known_hosts"] = "/etc/ssh/known_hosts.d/inbox-prod"
 sftph.upload("payload.json", cred, "/inbox/payload.json")
 ```
 
-If you connect to a host whose key is not in any loaded store,
-`get_client_sftp` raises `paramiko.SSHException`. There is no opt-out
-flag by design.
+If you connect to a host whose key is not in any consulted store, the
+`sftp` connection is refused and the operation raises. There is no
+opt-out flag by design.
 
 ## Combining with bucket-helper / os-helper
 

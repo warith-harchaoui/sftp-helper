@@ -168,8 +168,9 @@ def _cred_or_503() -> dict:
             status_code=503,
             detail=(
                 "No SFTP credentials on the server. Set SFTP_HELPER_CONFIG or "
-                "the SFTP_HOST/SFTP_LOGIN/SFTP_PASSWD/SFTP_DESTINATION_PATH/"
-                "SFTP_HTTPS environment variables."
+                "the required SFTP_HOST/SFTP_LOGIN/SFTP_HTTPS environment "
+                "variables (auth via SFTP_KEY or the SSH agent; "
+                "SFTP_DESTINATION_PATH optional, defaults to the server root)."
             ),
         )
     return _SERVER_CRED

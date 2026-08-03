@@ -14,6 +14,13 @@
 #   3. a .env file
 # A JSON twin (sftp_config.json.example) is also provided; YAML is preferred
 # here precisely because it supports the comments below.
+#
+# Backend: sftp-helper drives the system OpenSSH `sftp` client, so it
+# authenticates exactly like your own `sftp`/`scp` commands (SSH agent,
+# ~/.ssh/config, key files, hardware tokens all work).
+
+# ============================ REQUIRED ============================
+# Only three fields are mandatory: host, login, and the public HTTPS base.
 
 # REQUIRED — hostname of the SFTP server.
 # Where to find it: your FTP client (e.g. FileZilla) "Host" field, without
@@ -24,23 +31,42 @@ sftp_host: "sftp.example.com"
 # The same login you use in your FTP client.
 sftp_login: "your-login"
 
-# REQUIRED — SFTP password.
-# Leave this EMPTY ("") to authenticate with your SSH agent / key files
-# (~/.ssh/id_rsa, ~/.ssh/id_ed25519, ...) instead of a password.
-sftp_passwd: "your-password-or-leave-empty-to-use-ssh-agent"
-
-# REQUIRED — remote base directory for uploads.
-# Absolute path on the server under which files are written, e.g.
-# `/var/www/uploads` or `/home/you/public`.
-sftp_destination_path: "/remote/base/path"
-
 # REQUIRED — public HTTPS base URL that maps to sftp_destination_path.
 # Used to turn a remote file into a shareable web link. If your uploads
 # folder is served at https://files.example.com, put that here.
 sftp_https: "https://files.example.com"
 
+# ============================ AUTHENTICATION (optional) ============================
+# Pick ONE. For SSH-key auth you do NOT need a password. The recommended
+# setup is key-based: no secret ever lives in this file.
+
+# OPTIONAL — path to your SSH key.
+# This is how you authenticate WITHOUT a password. Point it at the key you
+# already use to `ssh`/`sftp` into this server, e.g. `~/.ssh/id_ed25519`.
+# You may also point it at the public half (`~/.ssh/id_ed25519.pub`): OpenSSH
+# then delegates the signature to your SSH agent / a hardware token — which is
+# why the *public* key is all that lives on disk in an agent/token setup.
+# Reminder: the matching PUBLIC key must already be installed on the server
+# (its ~/.ssh/authorized_keys) — that is the server-side prerequisite.
+# Leave empty to let OpenSSH use the SSH agent and your default ~/.ssh keys.
+sftp_key: ""
+
+# OPTIONAL — SFTP password (fallback for servers that do not accept keys).
+# Leave EMPTY ("") to authenticate with your key / SSH agent (recommended).
+# If set, it requires the `sshpass` helper to be installed, since OpenSSH
+# never reads a password from the command line.
+sftp_passwd: ""
+
+# ============================ OPTIONAL ============================
+
+# OPTIONAL — remote base directory for uploads (default: the server root "/").
+# Absolute path on the server under which files are written, e.g.
+# `/var/www/uploads`. On a chrooted SFTP account the root "/" already is your
+# home, so leaving this empty is usually exactly right.
+sftp_destination_path: ""
+
 # OPTIONAL — SSH port (default: 22).
-# Change only if your server listens on a non-standard port.
+# Change only if your server listens on a non-standard port, e.g. 2022.
 sftp_port: "22"
 
 # OPTIONAL — extra known_hosts file to trust, in addition to

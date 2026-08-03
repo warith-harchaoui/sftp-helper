@@ -10,4 +10,5 @@
 # --- Suite dependency -----------------------------------------------------
 os-helper>=1.5.3
 # --- Core runtime ---------------------------------------------------------
-paramiko>=3.0,<4
+# No Python SSH library: sftp-helper drives the system OpenSSH `sftp` client,
+# so the only runtime requirement beyond os-helper is that binary on PATH.

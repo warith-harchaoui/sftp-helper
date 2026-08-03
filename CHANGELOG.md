@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-08-03
+
+Swaps the SSH backend from the in-process **paramiko** library to the system
+**OpenSSH `sftp` client**, and relaxes the credentials contract around
+key-based auth. This is a breaking release.
+
+### Changed
+
+- **Backend: system OpenSSH `sftp` instead of paramiko.** Every operation now
+  runs as a short-lived `sftp -b` batch driven through `os_helper.system`.
+  Authentication matches the operator's own `ssh`/`sftp`: the SSH agent,
+  `~/.ssh` default identities, hardware tokens, and `~/.ssh/config` all work.
+  Requires the `sftp` binary on `PATH` (preinstalled on macOS, most Linux, and
+  Windows 10 1809+ / Server 2019+); a clear error is raised if it is missing.
+- **Credentials contract relaxed.** Only `sftp_host`, `sftp_login` and
+  `sftp_https` are required. `sftp_passwd` is now optional (empty ⇒ key / agent
+  auth) and `sftp_destination_path` is optional, defaulting to the server root
+  `/`.
+- **Strict host-key verification** is now enforced via OpenSSH
+  `StrictHostKeyChecking=yes` (was `paramiko.RejectPolicy()`); still no opt-out.
+  `sftp_known_hosts` is added to the default stores via `UserKnownHostsFile`.
+
+### Added
+
+- **`sftp_key` credential** — path to your SSH key for password-less auth. May
+  point at the private key *or* its `.pub` companion (OpenSSH then signs via the
+  agent / a hardware token). Empty ⇒ SSH agent + default identities.
+- **Live progress bar on upload *and* download**, matching
+  `os_helper.download_file`: on an interactive terminal the transfer runs
+  through `scp` under a pseudo-terminal and its meter drives
+  `os_helper.progress_bar` (byte-scaled, ETA). Auto-suppressed off a TTY (CI /
+  pipes), on Windows (no pty), or under password auth — those fall back to the
+  plain `sftp -b` transfer.
+
+### Removed
+
+- **`paramiko` dependency dropped** — the package now has no Python SSH
+  dependency beyond `os-helper`; the SSH backend is the system OpenSSH client.
+- **Live `paramiko.SFTPClient`** is gone. `get_client_sftp` is kept as a thin,
+  deprecated compatibility shim that validates connectivity and yields the
+  credentials dict (there is no longer a persistent client object to expose).
+
+### Notes
+
+- Password auth (`sftp_passwd`) now requires the `sshpass` helper, since OpenSSH
+  never reads a password from the command line; key-based auth is recommended.
+  The progress bar is unavailable under password auth (it falls back to the
+  plain, non-streamed transfer).
+
 ## [2.5.0] - 2026-08-02
 
 Adopts the hardened AI Helpers foundation and tightens the CI gate.

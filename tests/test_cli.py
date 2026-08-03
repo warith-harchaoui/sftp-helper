@@ -4,7 +4,7 @@ Smoke tests for the argparse and click CLIs.
 These tests exercise the CLI *parsing* layer and the trivial subcommands
 that do not need a live SFTP server. The goal here is to prevent
 regressions in the CLI entry points — flag names, subcommand names,
-dispatch wiring — without pulling in the full paramiko / network stack.
+dispatch wiring — without pulling in the SFTP / network stack.
 
 Usage Example
 -------------

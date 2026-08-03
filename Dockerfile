@@ -2,10 +2,10 @@
 #
 # sftp-helper — reproducible container image.
 #
-# Two-stage build: the base stage pulls the system deps needed for
-# paramiko / cryptography (no compiler — everything installs from wheels)
-# and installs the package with the [api] extra so the container can
-# serve the HTTP surface out of the box.
+# Two-stage build: the base stage installs the OpenSSH client (sftp-helper
+# shells out to the system `sftp` binary — it is a hard runtime requirement,
+# not optional) and installs the package with the [api] extra so the
+# container can serve the HTTP surface out of the box.
 #
 # The container reads credentials from either:
 #   - the file mounted at $SFTP_HELPER_CONFIG (bind-mount at runtime), or
@@ -39,8 +39,9 @@
 # --- base -------------------------------------------------------------------
 FROM python:3.11-slim AS base
 
-# System deps: tini for signal handling, plus the SSL / crypto libs
-# paramiko wheels dynamically link against on slim images.
+# System deps: tini for signal handling, and openssh-client which provides
+# the `sftp` binary this package drives (the whole SSH backend). libssl3 is
+# pulled in as its transitive dependency but named explicitly for clarity.
 RUN apt-get update && apt-get install --no-install-recommends -y \
         tini \
         libssl3 \
@@ -67,7 +68,7 @@ ENV PYTHONUNBUFFERED=1 \
     SFTP_HELPER_HOST=0.0.0.0 \
     SFTP_HELPER_PORT=8000
 
-# tini reaps orphan children (paramiko subprocesses) cleanly on SIGTERM.
+# tini reaps orphan children (spawned `sftp` subprocesses) cleanly on SIGTERM.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 # Default: serve FastAPI + MCP. Override for one-shot CLI usage.
 CMD ["sftp-helper-mcp"]

@@ -14,7 +14,7 @@ This toolbox requires:
 
 [![logo](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
 
-SFTP Helper is a Python library that provides utility functions for working with SFTP servers via [paramiko](https://www.paramiko.org/). Host key verification is on by default — `~/.ssh/known_hosts` is loaded and unknown hosts are rejected.
+SFTP Helper is a Python library that provides utility functions for working with SFTP servers via the system OpenSSH `sftp` client. Host key verification is on by default — `~/.ssh/known_hosts` is consulted and unknown hosts are rejected.
 
 > **Remote by design.** `sftp-helper` exists to move data to and from a *remote*
 > server, so it is deliberately **not** local-first and ships **no GUI**. For
@@ -42,8 +42,9 @@ SFTP Helper is a Python library that provides utility functions for working with
   both the `sftp://` address and its public HTTPS URL.
 - **Credentials loader** (`credentials`) resolving JSON / YAML / directory /
   `SFTP_*` env vars / `.env`, with a masked `show-credentials` view.
-- **Strict host-key verification, always on** — `paramiko.RejectPolicy()`, no
-  opt-out; trust an extra key via the optional `sftp_known_hosts` credential.
+- **Strict host-key verification, always on** — OpenSSH
+  `StrictHostKeyChecking=yes`, no opt-out; trust an extra key via the optional
+  `sftp_known_hosts` credential.
 - **Three surfaces, one behavior** — Python library, argparse CLI (`sftp-helper`),
   click CLI twin (`sftp-helper-click`), and FastAPI HTTP surface. See the
   [multi-surface section](#multi-surface-exposure).
@@ -101,14 +102,18 @@ cp sftp_config.json.example sftp_config.json
 
 You may also provide a YAML version (`sftp_config.yaml`), environment variables, or an `.env` file — `sftp-helper` falls back in that order via `os_helper.get_config`:
 
+Only **three** fields are required — `sftp_host`, `sftp_login`, `sftp_https`.
+Authenticate with an SSH key (recommended: no password) by setting `sftp_key`
+or loading your key into the SSH agent. `sftp_destination_path` is optional and
+defaults to the server root `/`.
+
 _JSON_
 ```json
 {
     "sftp_host": "<sftp_host>",
     "sftp_login": "<sftp_login>",
-    "sftp_passwd": "<sftp_passwd>",
     "sftp_https": "<sftp_https>",
-    "sftp_destination_path": "<sftp_destination_path>",
+    "sftp_key": "~/.ssh/id_ed25519"
 }
 ```
 or
@@ -117,9 +122,11 @@ _YAML_
 ```yaml
 sftp_host: "<sftp_host>"
 sftp_login: "<sftp_login>"
-sftp_passwd: "<sftp_passwd>"
 sftp_https: "<sftp_https>"
-sftp_destination_path: "<sftp_destination_path>"
+sftp_key: "~/.ssh/id_ed25519"    # optional; empty -> SSH agent + default keys
+# sftp_passwd: "<sftp_passwd>"   # optional fallback (needs `sshpass`)
+# sftp_destination_path: "/base" # optional; empty -> server root "/"
+# sftp_port: "2022"              # optional; default 22
 ```
 or
 
@@ -127,9 +134,8 @@ _ENVIRONMENT VARIABLES_
 ```bash
 SFTP_HOST="<sftp_host>" \
 SFTP_LOGIN="<sftp_login>" \
-SFTP_PASSWD="<sftp_passwd>" \
 SFTP_HTTPS="<sftp_https>" \
-SFTP_DESTINATION_PATH="<sftp_destination_path>" \
+SFTP_KEY="~/.ssh/id_ed25519" \
 python <your_python_script>
 ```
 or
@@ -138,16 +144,17 @@ _.env_
 ```
 SFTP_HOST                = <sftp_host>
 SFTP_LOGIN               = <sftp_login>
-SFTP_PASSWD              = <sftp_passwd>
 SFTP_HTTPS               = <sftp_https>
-SFTP_DESTINATION_PATH    = <sftp_destination_path>
+SFTP_KEY                 = ~/.ssh/id_ed25519
 ```
 
-In which you can find these information in your favorite FTP tool (mine is FileZilla):
-  + `<sftp_host>` is the server path `sftp.` ...
-  + `<sftp_login>` and `<sftp_passwd>` that you use in FileZilla
-  + `<sftp_destination_path>` is the remote folder path
-  + `<sftp_https>` corresponds to the web URL of `<sftp_destination_path>`
+Where to find these (in your favorite FTP tool — mine is FileZilla):
+  + `<sftp_host>` is the server host, e.g. `sftp.example.com`
+  + `<sftp_login>` is your username
+  + `<sftp_https>` corresponds to the web URL of `sftp_destination_path`
+  + `sftp_key` is the SSH key you already use to `ssh`/`sftp` into the server
+    (its public half must be installed in the server's `authorized_keys`); or
+    leave it empty and rely on your SSH agent
   + <your_python_script> is your python script :)
 
 ## Usage
@@ -200,9 +207,10 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 ## Host key verification
 
-`sftp_helper` never disables host key verification. The default policy is
-`paramiko.RejectPolicy()` and `~/.ssh/known_hosts` is loaded automatically. To
-trust a server in a non-default location, point at an extra known_hosts file
+`sftp_helper` never disables host key verification. Every `sftp` invocation
+passes `StrictHostKeyChecking=yes` and `~/.ssh/known_hosts` is consulted
+automatically, so a host whose key you have not already accepted is rejected.
+To trust a server whose key lives elsewhere, point at an extra known_hosts file
 via the optional `sftp_known_hosts` credential.
 
 ## Multi-surface exposure

@@ -1,16 +1,18 @@
 """Tests for sftp_helper.
 
-paramiko's SSHClient is monkeypatched so the suite runs without a real SFTP
-server: a MagicMock stands in for the connection and we assert against the
-calls made to it.
+The module now drives the system OpenSSH ``sftp`` client through
+``os_helper.system``. Instead of a live server, we monkeypatch
+``os_helper.system`` with a fake that records the command line and the ``sftp``
+batch file it would have run, and returns a programmable ``{"out", "err"}``
+result. ``shutil.which`` is patched too so the tests are hermetic regardless of
+whether ``sftp`` / ``sshpass`` are installed on the machine running them.
 """
 
 import json
 import os
-import stat as stat_mod
-from unittest.mock import ANY, MagicMock
+import shlex
+from types import SimpleNamespace
 
-import paramiko
 import pytest
 import yaml
 
@@ -58,12 +60,13 @@ def test_strip_sftp_path_no_scheme():
 # credentials() loader
 # ---------------------------------------------------------------------------
 
+# A full config (every key). host/login/https are required; the rest optional.
 CRED_KEYS = {
     "sftp_host": "sftp.example.com",
     "sftp_login": "alice",
-    "sftp_passwd": "secret",
-    "sftp_destination_path": "/var/www/uploads",
     "sftp_https": "https://example.com/uploads",
+    "sftp_key": "~/.ssh/id_ed25519",
+    "sftp_destination_path": "/var/www/uploads",
 }
 
 
@@ -86,14 +89,15 @@ def test_credentials_from_yaml(tmp_path):
 def test_credentials_from_env(monkeypatch, tmp_path):
     for k, v in CRED_KEYS.items():
         monkeypatch.setenv(k.upper(), v)
-    # Point at a directory that contains no config so the loader falls back to env.
+    # Point at a directory that contains no config so the loader falls back to
+    # env; optional keys must be backfilled from the environment too.
     cred = sftph.credentials(str(tmp_path))
     for k, v in CRED_KEYS.items():
         assert cred[k] == v
 
 
-def test_credentials_missing_key_raises(tmp_path):
-    """os_helper >= v1.2.0 raises RuntimeError when no source provides the keys."""
+def test_credentials_missing_required_key_raises(tmp_path):
+    """Dropping a *required* key (https) makes the loader raise."""
     incomplete = {k: v for k, v in CRED_KEYS.items() if k != "sftp_https"}
     cfg = tmp_path / "sftp_config.json"
     cfg.write_text(json.dumps(incomplete))
@@ -101,238 +105,351 @@ def test_credentials_missing_key_raises(tmp_path):
         sftph.credentials(str(cfg))
 
 
+def test_credentials_password_is_optional(tmp_path):
+    """A key-based config with no password loads fine (passwd is optional now)."""
+    minimal = {
+        "sftp_host": "sftp.example.com",
+        "sftp_login": "alice",
+        "sftp_https": "https://example.com/uploads",
+    }
+    cfg = tmp_path / "sftp_config.json"
+    cfg.write_text(json.dumps(minimal))
+    cred = sftph.credentials(str(cfg))
+    assert cred["sftp_login"] == "alice"
+    assert "sftp_passwd" not in cred or sftph_main.osh.emptystring(cred.get("sftp_passwd"))
+
+
+def test_credentials_destination_defaults_to_root(tmp_path):
+    """An absent/empty destination path resolves to the server root."""
+    cfg = tmp_path / "sftp_config.json"
+    cfg.write_text(
+        json.dumps(
+            {
+                "sftp_host": "sftp.example.com",
+                "sftp_login": "alice",
+                "sftp_https": "https://example.com/uploads",
+            }
+        )
+    )
+    cred = sftph.credentials(str(cfg))
+    assert cred["sftp_destination_path"] == "/"
+
+
 # ---------------------------------------------------------------------------
-# Mocked SFTP fixture
+# Fake ``sftp`` backend
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def mock_ssh(monkeypatch):
-    """Replace paramiko.SSHClient with a MagicMock factory.
+def sftp(monkeypatch):
+    """Patch ``osh.system`` + ``shutil.which`` and record what would have run.
 
-    Returns ``(sftp, ssh, factory)`` where ``sftp`` is the mock SFTPClient
-    instance handed to callers via ``open_sftp``.
+    Returns a handle with:
+      * ``.calls`` — one SimpleNamespace per invocation (``argv``, ``batch``,
+        ``sshpass`` env seen during the call).
+      * ``.push(err=..., out=...)`` — queue a result for the next call (calls
+        past the queue get a clean success, ``err=""``).
+      * ``.enable_sshpass()`` / ``.hide_sftp()`` — toggle binary availability.
     """
-    sftp = MagicMock(name="SFTPClient")
-    ssh = MagicMock(name="SSHClient")
-    ssh.open_sftp.return_value = sftp
-    factory = MagicMock(return_value=ssh)
-    monkeypatch.setattr(sftph_main.paramiko, "SSHClient", factory)
-    return sftp, ssh, factory
+    calls = []
+    results = []
+    which = {"sftp": "/usr/bin/sftp", "sshpass": None}
+
+    def fake_system(cmd, expected_output="", check_exitcode=True, check_empty=False):
+        argv = shlex.split(cmd)
+        batch = None
+        if "-b" in argv:
+            batch_path = argv[argv.index("-b") + 1]
+            with open(batch_path) as fh:
+                batch = fh.read()
+            # Emulate ``get`` materializing the local file so downstream
+            # ``osh.checkfile`` succeeds, exactly as a real transfer would.
+            for line in batch.splitlines():
+                if line.startswith("get"):
+                    local = shlex.split(line)[-1]
+                    open(local, "w").close()
+        calls.append(
+            SimpleNamespace(cmd=cmd, argv=argv, batch=batch, sshpass=os.environ.get("SSHPASS"))
+        )
+        res = results.pop(0) if results else {"out": "", "err": ""}
+        return {"out": res.get("out", ""), "err": res.get("err", "")}
+
+    def fake_which(name):
+        return which.get(name)
+
+    monkeypatch.setattr(sftph_main.osh, "system", fake_system)
+    monkeypatch.setattr(sftph_main.shutil, "which", fake_which)
+
+    return SimpleNamespace(
+        calls=calls,
+        push=lambda **kw: results.append(kw),
+        enable_sshpass=lambda: which.__setitem__("sshpass", "/usr/bin/sshpass"),
+        hide_sftp=lambda: which.__setitem__("sftp", None),
+    )
 
 
 @pytest.fixture
 def cred():
-    return dict(CRED_KEYS)
-
-
-def _exists_map(sftp, present):
-    """Wire sftp.stat so that paths in ``present`` succeed and others raise."""
-    file_mode = stat_mod.S_IFREG | 0o644
-    dir_mode = stat_mod.S_IFDIR | 0o755
-
-    def fake_stat(path):
-        if path in present:
-            st = MagicMock()
-            st.st_mode = dir_mode if present[path] == "dir" else file_mode
-            st.st_atime = 1700000000
-            st.st_mtime = 1700000000
-            return st
-        raise FileNotFoundError(path)
-
-    sftp.stat.side_effect = fake_stat
+    return {
+        "sftp_host": "sftp.example.com",
+        "sftp_login": "alice",
+        "sftp_https": "https://example.com/uploads",
+        "sftp_destination_path": "/var/www/uploads",
+        "sftp_key": "~/.ssh/id_ed25519",
+        "sftp_port": "22",
+    }
 
 
 # ---------------------------------------------------------------------------
-# Connection-level
+# Command construction (auth, host-key policy, port, key)
 # ---------------------------------------------------------------------------
 
 
-def test_get_client_sftp_uses_reject_policy(mock_ssh, cred):
-    _, ssh, _ = mock_ssh
-    with sftph.get_client_sftp(cred):
-        pass
-    policy_arg = ssh.set_missing_host_key_policy.call_args.args[0]
-    assert isinstance(policy_arg, paramiko.RejectPolicy)
+def test_command_uses_key_and_strict_host_checking(sftp, cred):
+    sftph.remote_file_exists("/folder/x.txt", cred)
+    argv = sftp.calls[0].argv
+    assert argv[0] == "sftp"
+    assert "-i" in argv and argv[argv.index("-i") + 1] == os.path.expanduser("~/.ssh/id_ed25519")
+    assert "-P" in argv and argv[argv.index("-P") + 1] == "22"
+    assert "BatchMode=yes" in argv
+    assert "StrictHostKeyChecking=yes" in argv
+    assert f"{cred['sftp_login']}@{cred['sftp_host']}" in argv
+    assert "sshpass" not in argv
 
 
-def test_get_client_sftp_loads_system_host_keys(mock_ssh, cred):
-    _, ssh, _ = mock_ssh
-    with sftph.get_client_sftp(cred):
-        pass
-    ssh.load_system_host_keys.assert_called_once()
+def test_custom_port_is_passed(sftp, cred):
+    cred["sftp_port"] = "2022"
+    sftph.remote_file_exists("/folder/x.txt", cred)
+    argv = sftp.calls[0].argv
+    assert argv[argv.index("-P") + 1] == "2022"
 
 
-def test_get_client_sftp_loads_extra_known_hosts(mock_ssh, cred, tmp_path):
+def test_no_key_omits_identity_flag(sftp, cred):
+    cred.pop("sftp_key")
+    sftph.remote_file_exists("/folder/x.txt", cred)
+    assert "-i" not in sftp.calls[0].argv
+
+
+def test_extra_known_hosts_added(sftp, cred, tmp_path):
     extra = tmp_path / "known_hosts"
     extra.write_text("")
     cred["sftp_known_hosts"] = str(extra)
-    _, ssh, _ = mock_ssh
-    with sftph.get_client_sftp(cred):
-        pass
-    ssh.load_host_keys.assert_called_once_with(str(extra))
+    sftph.remote_file_exists("/folder/x.txt", cred)
+    argv = sftp.calls[0].argv
+    ukh = [a for a in argv if a.startswith("UserKnownHostsFile=")]
+    assert ukh and str(extra) in ukh[0]
 
 
-def test_get_client_sftp_connection_failure_raises_clean_exception(mock_ssh, cred):
-    _, ssh, _ = mock_ssh
-    ssh.connect.side_effect = paramiko.SSHException("boom")
-    with pytest.raises(Exception) as excinfo, sftph.get_client_sftp(cred):
-        pass
-    # The previous pysftp-era f-string crashed with NameError; verify we surface
-    # the real failure with the host info embedded in the message.
-    assert "NameError" not in str(excinfo.value)
-    assert cred["sftp_host"] in str(excinfo.value)
-    assert "boom" in str(excinfo.value)
-    ssh.close.assert_called()
+def test_password_without_sshpass_raises(sftp, cred):
+    cred["sftp_passwd"] = "secret"
+    # sshpass is unavailable by default in the fixture.
+    with pytest.raises(Exception, match="sshpass"):
+        sftph.remote_file_exists("/folder/x.txt", cred)
 
 
-def test_get_client_sftp_closes_on_normal_exit(mock_ssh, cred):
-    sftp, ssh, _ = mock_ssh
-    with sftph.get_client_sftp(cred):
-        pass
-    sftp.close.assert_called_once()
-    ssh.close.assert_called_once()
+def test_password_with_sshpass_uses_it(sftp, cred):
+    cred["sftp_passwd"] = "secret"
+    sftp.enable_sshpass()
+    sftph.remote_file_exists("/folder/x.txt", cred)
+    call = sftp.calls[0]
+    assert call.argv[0] == "sshpass"
+    assert "-e" in call.argv
+    assert "BatchMode=no" in call.argv
+    # The password is passed via the environment, only for the duration of the
+    # call — never on the command line.
+    assert call.sshpass == "secret"
+    assert "secret" not in call.cmd
+    assert os.environ.get("SSHPASS") is None
+
+
+def test_missing_sftp_binary_raises(sftp, cred):
+    sftp.hide_sftp()
+    with pytest.raises(Exception, match="sftp"):
+        sftph.remote_file_exists("/folder/x.txt", cred)
 
 
 # ---------------------------------------------------------------------------
-# File ops
+# Existence / directory probes
 # ---------------------------------------------------------------------------
 
 
-def test_upload_puts_then_overwrites(mock_ssh, cred, tmp_path):
-    sftp, _, _ = mock_ssh
-    local = tmp_path / "hello.txt"
-    local.write_text("hi")
-    target = f"{cred['sftp_destination_path']}/hello.txt"
-    # File exists pre-upload (forces a remove), and after upload.
-    _exists_map(sftp, {"/var/www/uploads/hello.txt": "file"})
-
-    result = sftph.upload(str(local), cred, target)
-
-    assert result == target
-    sftp.remove.assert_called_once_with("/var/www/uploads/hello.txt")
-    # A progress callback is now threaded through for the transfer bar.
-    sftp.put.assert_called_once_with(
-        str(local), "/var/www/uploads/hello.txt", callback=ANY, confirm=True
-    )
-    sftp.utime.assert_called_once()
+def test_remote_file_exists_true(sftp, cred):
+    assert sftph.remote_file_exists("/folder/x.txt", cred) is True
+    assert 'ls "/folder/x.txt"' in sftp.calls[0].batch
 
 
-def test_upload_skips_remove_when_target_absent(mock_ssh, cred, tmp_path):
-    sftp, _, _ = mock_ssh
-    local = tmp_path / "fresh.txt"
-    local.write_text("hi")
-    target = f"{cred['sftp_destination_path']}/fresh.txt"
-    # First stat: missing. Second stat (post-put assertion): present.
-    file_mode = stat_mod.S_IFREG | 0o644
-    st = MagicMock(st_mode=file_mode, st_atime=0, st_mtime=0)
-    sftp.stat.side_effect = [FileNotFoundError(), st]
-
-    sftph.upload(str(local), cred, target)
-
-    sftp.remove.assert_not_called()
-    sftp.put.assert_called_once()
+def test_remote_file_exists_false(sftp, cred):
+    sftp.push(err="Can't ls: /folder/x.txt: No such file or directory")
+    assert sftph.remote_file_exists("/folder/x.txt", cred) is False
 
 
-def test_download_calls_get_and_preserves_mtime(mock_ssh, cred, tmp_path, monkeypatch):
-    sftp, _, _ = mock_ssh
-    local = tmp_path / "out.txt"
-
-    # download() now stats first (for the bar total + mtime), then sftp.get()
-    # with a progress callback, then os.utime(). Have sftp.get materialize the
-    # local file so checkfile succeeds; accept the callback kwarg paramiko gets.
-    def fake_get(remote, local_path, callback=None):
-        open(local_path, "w").close()
-
-    sftp.get.side_effect = fake_get
-    file_mode = stat_mod.S_IFREG | 0o644
-    sftp.stat.return_value = MagicMock(
-        st_mode=file_mode, st_size=0, st_atime=10, st_mtime=20
-    )
-
-    captured = {}
-    real_utime = os.utime
-
-    def fake_utime(path, times):
-        captured["path"] = str(path)
-        captured["times"] = times
-        real_utime(path, times)
-
-    monkeypatch.setattr(sftph_main.os, "utime", fake_utime)
-
-    sftph.download(f"sftp://{cred['sftp_host']}/folder/out.txt", cred, str(local))
-
-    sftp.get.assert_called_once_with("/folder/out.txt", str(local), callback=ANY)
-    assert captured["times"] == (10, 20)
+def test_remote_file_exists_connection_error_raises(sftp, cred):
+    sftp.push(err="alice@sftp.example.com: Permission denied (publickey).")
+    with pytest.raises(Exception, match="Permission denied|reach"):
+        sftph.remote_file_exists("/folder/x.txt", cred)
 
 
-def test_delete_skips_when_remote_absent(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {})
-    assert sftph.delete(f"sftp://{cred['sftp_host']}/folder/x.txt", cred) is True
-    sftp.remove.assert_not_called()
-
-
-def test_delete_removes_existing(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    # First stat: present (exists check). Second stat: missing (post-remove check).
-    file_mode = stat_mod.S_IFREG | 0o644
-    st = MagicMock(st_mode=file_mode, st_atime=0, st_mtime=0)
-    sftp.stat.side_effect = [st, FileNotFoundError()]
-
-    assert sftph.delete(f"sftp://{cred['sftp_host']}/folder/x.txt", cred) is True
-    sftp.remove.assert_called_once_with("/folder/x.txt")
-
-
-def test_remote_file_exists_true(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {"/folder/x.txt": "file"})
-    assert sftph.remote_file_exists(f"sftp://{cred['sftp_host']}/folder/x.txt", cred) is True
-
-
-def test_remote_file_exists_false(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {})
-    assert sftph.remote_file_exists(f"sftp://{cred['sftp_host']}/folder/x.txt", cred) is False
-
-
-def test_remote_dir_exist_true(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {"/srv/uploads": "dir"})
+def test_remote_dir_exist_true(sftp, cred):
     assert sftph.remote_dir_exist("/srv/uploads", cred) is True
+    assert 'cd "/srv/uploads"' in sftp.calls[0].batch
 
 
-def test_remote_dir_exist_false_when_file(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {"/srv/uploads": "file"})
+def test_remote_dir_exist_false_when_file(sftp, cred):
+    sftp.push(err="Couldn't canonicalize: Not a directory")
     assert sftph.remote_dir_exist("/srv/uploads", cred) is False
 
 
-def test_make_remote_directory_creates_nested(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    created = set()
+# ---------------------------------------------------------------------------
+# mkdir -p
+# ---------------------------------------------------------------------------
 
-    def stat(path):
-        if path in created:
-            return MagicMock(st_mode=stat_mod.S_IFDIR | 0o755)
-        raise FileNotFoundError(path)
 
-    def mkdir(path):
-        created.add(path)
-
-    sftp.stat.side_effect = stat
-    sftp.mkdir.side_effect = mkdir
-
+def test_make_remote_directory_creates_nested(sftp, cred):
+    # First cd (isdir probe) says "missing", then the mkdir batch, then a final
+    # cd confirming the target now exists.
+    sftp.push(err="Couldn't stat remote file: No such file or directory")  # initial isdir -> False
+    sftp.push()  # the -mkdir batch succeeds
+    sftp.push()  # final isdir verify -> True
     sftph.make_remote_directory("/a/b/c", cred)
+    mkdir_batch = sftp.calls[1].batch
+    assert '-mkdir "/a"' in mkdir_batch
+    assert '-mkdir "/a/b"' in mkdir_batch
+    assert '-mkdir "/a/b/c"' in mkdir_batch
 
-    assert [c.args[0] for c in sftp.mkdir.call_args_list] == ["/a", "/a/b", "/a/b/c"]
 
-
-def test_make_remote_directory_noop_when_exists(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    _exists_map(sftp, {"/a/b/c": "dir"})
+def test_make_remote_directory_noop_when_exists(sftp, cred):
+    # The very first isdir probe succeeds -> no mkdir batch is ever run.
     sftph.make_remote_directory("/a/b/c", cred)
-    sftp.mkdir.assert_not_called()
+    assert len(sftp.calls) == 1
+    assert sftp.calls[0].batch.startswith('cd "/a/b/c"')
+
+
+# ---------------------------------------------------------------------------
+# delete
+# ---------------------------------------------------------------------------
+
+
+def test_delete_removes_existing(sftp, cred):
+    assert sftph.delete("sftp://sftp.example.com/folder/x.txt", cred) is True
+    assert 'rm "/folder/x.txt"' in sftp.calls[0].batch
+
+
+def test_delete_idempotent_when_absent(sftp, cred):
+    sftp.push(err="Couldn't delete file: No such file or directory")
+    assert sftph.delete("/folder/x.txt", cred) is True
+
+
+# ---------------------------------------------------------------------------
+# upload / download
+# ---------------------------------------------------------------------------
+
+
+def test_upload_creates_parent_then_puts(sftp, cred, tmp_path):
+    local = tmp_path / "report.pdf"
+    local.write_text("hi")
+    # calls: [0] isdir("/inbox") -> exists (default success), [1] put
+    result = sftph.upload(str(local), cred, "/inbox/report.pdf")
+    assert result == "/inbox/report.pdf"
+    put_batch = sftp.calls[-1].batch
+    assert f'put -p "{local}" "/inbox/report.pdf"' in put_batch
+
+
+def test_upload_hashed_name_when_no_address(sftp, cred, tmp_path):
+    local = tmp_path / "clip.bin"
+    local.write_text("payload")
+    result = sftph.upload(str(local), cred)
+    assert result.startswith("/var/www/uploads/")
+    assert result.endswith(".bin")
+
+
+def test_upload_failure_raises(sftp, cred, tmp_path):
+    local = tmp_path / "report.pdf"
+    local.write_text("hi")
+    sftp.push()  # parent isdir -> exists
+    sftp.push(err="remote open failed: Permission denied")  # put fails (file perms)
+    with pytest.raises(Exception, match="Upload failed"):
+        sftph.upload(str(local), cred, "/inbox/report.pdf")
+
+
+def test_download_calls_get(sftp, cred, tmp_path):
+    local = tmp_path / "out.txt"
+    sftph.download("sftp://sftp.example.com/folder/out.txt", cred, str(local))
+    get_batch = sftp.calls[0].batch
+    assert f'get -p "/folder/out.txt" "{local}"' in get_batch
+    assert local.exists()
+
+
+def test_download_default_local_name(sftp, cred, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    out = sftph.download("sftp://sftp.example.com/folder/out.txt", cred)
+    assert out == "out.txt"
+    assert (tmp_path / "out.txt").exists()
+
+
+# ---------------------------------------------------------------------------
+# Progress-bar transfer path (scp under a pseudo-terminal)
+# ---------------------------------------------------------------------------
+
+
+def test_can_progress_false_off_tty(sftp, cred):
+    # The fixture's fake ``which`` has no scp, and pytest's stderr is not a TTY,
+    # so transfers take the plain sftp path — which is what all the upload /
+    # download tests above rely on.
+    assert sftph_main._can_progress(cred) is False
+
+
+def test_scp_argv_builds_expected_transfer(cred):
+    argv, _env = sftph_main._scp_argv(cred, "local.txt", "alice@host:/remote.txt")
+    assert argv[0] == "scp"
+    assert "-p" in argv  # preserve times
+    assert "StrictHostKeyChecking=yes" in argv
+    assert argv[-2:] == ["local.txt", "alice@host:/remote.txt"]
+
+
+def test_scp_pty_runs_and_captures(tmp_path):
+    # Drive the pty runner with a stand-in that emits a percentage meter, to
+    # exercise the read loop + percent parsing + success return without scp.
+    rc, out = sftph_main._scp_pty(
+        ["sh", "-c", "printf '25%%\\n100%%\\n'; exit 0"], {}, total=1000, desc="x"
+    )
+    assert rc == 0
+    assert "25%" in out
+
+
+def test_scp_pty_reports_failure(tmp_path):
+    rc, out = sftph_main._scp_pty(["sh", "-c", "echo boom 1>&2; exit 3"], {}, total=None, desc="x")
+    assert rc == 3
+    assert "boom" in out
+
+
+def test_send_uses_scp_when_progress_available(sftp, cred, tmp_path, monkeypatch):
+    # Force the progress path and capture the scp argv it would run.
+    local = tmp_path / "clip.mp4"
+    local.write_text("data")
+    monkeypatch.setattr(sftph_main, "_can_progress", lambda _c: True)
+    seen = {}
+
+    def fake_pty(argv, env, total, desc):
+        seen["argv"] = argv
+        seen["total"] = total
+        return 0, ""
+
+    monkeypatch.setattr(sftph_main, "_scp_pty", fake_pty)
+    sftph_main._send(cred, str(local), "/inbox/clip.mp4", upload=True, desc="clip.mp4")
+    assert seen["argv"][0] == "scp"
+    assert seen["argv"][-1] == "alice@sftp.example.com:/inbox/clip.mp4"
+    assert seen["total"] == local.stat().st_size  # byte-accurate bar total
+
+
+def test_send_progress_failure_raises(sftp, cred, tmp_path, monkeypatch):
+    local = tmp_path / "clip.mp4"
+    local.write_text("data")
+    monkeypatch.setattr(sftph_main, "_can_progress", lambda _c: True)
+    monkeypatch.setattr(
+        sftph_main, "_scp_pty", lambda *a, **k: (1, "scp: /inbox: Permission denied")
+    )
+    with pytest.raises(Exception, match="Permission denied"):
+        sftph_main._send(cred, str(local), "/inbox/clip.mp4", upload=True, desc="clip.mp4")
 
 
 # ---------------------------------------------------------------------------
@@ -340,73 +457,36 @@ def test_make_remote_directory_noop_when_exists(mock_ssh, cred):
 # ---------------------------------------------------------------------------
 
 
-def test_remote_tempfile_cleanup_on_success(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    # Inside the with-block we pretend the user uploaded the file.
-    state = {"present": False}
-    file_mode = stat_mod.S_IFREG | 0o644
-
-    def stat(path):
-        if state["present"]:
-            return MagicMock(st_mode=file_mode, st_atime=0, st_mtime=0)
-        raise FileNotFoundError(path)
-
-    sftp.stat.side_effect = stat
-
+def test_remote_tempfile_cleanup_on_success(sftp, cred):
     with sftph.remote_tempfile(cred, ext="txt") as (addr, url):
         assert addr.startswith(cred["sftp_destination_path"] + "/")
         assert addr.endswith(".txt")
         assert url.startswith(cred["sftp_https"] + "/")
-        state["present"] = True
-        state["present"] = (
-            False  # simulate the caller's delete; tempfile cleanup must still be a safe no-op
-        )
-
-    # On exit, tempfile calls delete(); since file is "absent" by now, no remove() call expected.
-    sftp.remove.assert_not_called()
+    # On exit, a delete (rm) is issued for the reserved path.
+    assert any(c.batch and c.batch.startswith("rm ") for c in sftp.calls)
 
 
-def test_remote_tempfile_deletes_existing_on_exit(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    file_mode = stat_mod.S_IFREG | 0o644
-    # First exists check (inside delete()): present. Second exists check (post-remove): missing.
-    sftp.stat.side_effect = [
-        MagicMock(st_mode=file_mode, st_atime=0, st_mtime=0),
-        FileNotFoundError(),
-    ]
-
-    with sftph.remote_tempfile(cred) as (addr, _):
-        pass
-
-    sftp.remove.assert_called_once()
-
-
-def test_remote_tempfile_preserves_original_exception(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    # Make cleanup itself blow up; the user's exception must still win.
-    sftp.stat.side_effect = paramiko.SSHException("cleanup-stat-failure")
-
-    class UserError(RuntimeError):
-        pass
-
-    with pytest.raises(UserError), sftph.remote_tempfile(cred) as (_, _):
-        raise UserError("the real problem")
-
-
-def test_remote_tempfile_includes_subdir(mock_ssh, cred):
-    sftp, _, _ = mock_ssh
-    # subdir triggers make_remote_directory; track mkdir calls so subsequent
-    # stat() lookups can report those paths as existing dirs.
-    created_dirs = set()
-
-    def stat(path):
-        if path in created_dirs:
-            return MagicMock(st_mode=stat_mod.S_IFDIR | 0o755)
-        raise FileNotFoundError(path)
-
-    sftp.stat.side_effect = stat
-    sftp.mkdir.side_effect = lambda p: created_dirs.add(p)
-
+def test_remote_tempfile_includes_subdir(sftp, cred):
     with sftph.remote_tempfile(cred, subdir="batch-42") as (addr, url):
         assert "/batch-42/" in addr
         assert "/batch-42/" in url
+
+
+def test_remote_tempfile_preserves_original_exception(sftp, cred):
+    class UserError(RuntimeError):
+        pass
+
+    # Make the cleanup delete fail; the user's exception must still win.
+    def boom(*_a, **_k):
+        raise RuntimeError("cleanup blew up")
+
+    # Patch delete only for this test so the finally-branch cleanup raises.
+    import sftp_helper.main as m
+
+    original_delete = m.delete
+    m.delete = boom
+    try:
+        with pytest.raises(UserError), sftph.remote_tempfile(cred) as (_addr, _url):
+            raise UserError("the real problem")
+    finally:
+        m.delete = original_delete

@@ -47,16 +47,19 @@ supply-chain hygiene** (strict host-key verification with no opt-out
 flag, `os-helper`-based credential discovery, multi-surface exposure).
 It intentionally does *not* try to compete with `Fabric` on task
 orchestration or with `Rclone` on multi-backend replication, and it
-keeps `paramiko` as the only mandatory dependency — you only pay for
-the FastAPI / click surfaces if you install their extras. That
-trade-off is the main differentiator against `pysftp` (unmaintained
+drives the **system OpenSSH `sftp` client** — so it has no Python SSH
+dependency at all (only `os-helper`), and authenticates exactly like
+your own `ssh`/`sftp` (agent, `~/.ssh/config`, hardware tokens). You
+only pay for the FastAPI / click surfaces if you install their extras.
+That trade-off is the main differentiator against `pysftp` (unmaintained
 since 2016, missing recent security fixes) and against raw `paramiko`
 (correct, but requires 40 lines of boilerplate before you can `.put()`
 a file).
 
 A few notes behind the ratings. On **host-key verification**,
-`sftp-helper` scores top because it defaults to `RejectPolicy` with no
-opt-out flag; `paramiko` and `pysftp` only verify if you wire it
+`sftp-helper` scores top because it defaults to
+`StrictHostKeyChecking=yes` with no opt-out flag; `paramiko` and
+`pysftp` only verify if you wire it
 yourself, while `asyncssh` and `Rclone` verify by default. On
 **temp remote file**, `sftp-helper`'s `remote_tempfile` context manager
 is the only first-class, auto-cleaning implementation among the Python
