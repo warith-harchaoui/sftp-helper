@@ -142,21 +142,26 @@ def test_credentials_destination_defaults_to_root(tmp_path):
 
 @pytest.fixture
 def sftp(monkeypatch):
-    """Patch ``osh.system`` + ``shutil.which`` and record what would have run.
+    """Patch ``_system`` + ``shutil.which`` and record what would have run.
+
+    ``_system`` is the direct-subprocess runner; the fake returns
+    ``(returncode, stdout, stderr)`` so tests exercise the same exit-code-based
+    logic the real code uses.
 
     Returns a handle with:
       * ``.calls`` — one SimpleNamespace per invocation (``argv``, ``batch``,
-        ``sshpass`` env seen during the call).
-      * ``.push(err=..., out=...)`` — queue a result for the next call (calls
-        past the queue get a clean success, ``err=""``).
+        ``sshpass`` env passed to the call).
+      * ``.push(code=..., out=..., err=...)`` — queue a result for the next
+        call. A queued ``err`` with no explicit ``code`` defaults to a non-zero
+        exit (so "not found" / connection errors read as failures); calls past
+        the queue get a clean success ``(0, "", "")``.
       * ``.enable_sshpass()`` / ``.hide_sftp()`` — toggle binary availability.
     """
     calls = []
     results = []
     which = {"sftp": "/usr/bin/sftp", "sshpass": None}
 
-    def fake_system(cmd, expected_output="", check_exitcode=True, check_empty=False):
-        argv = shlex.split(cmd)
+    def fake_system(argv, env):
         batch = None
         if "-b" in argv:
             batch_path = argv[argv.index("-b") + 1]
@@ -168,16 +173,15 @@ def sftp(monkeypatch):
                 if line.startswith("get"):
                     local = shlex.split(line)[-1]
                     open(local, "w").close()
-        calls.append(
-            SimpleNamespace(cmd=cmd, argv=argv, batch=batch, sshpass=os.environ.get("SSHPASS"))
-        )
-        res = results.pop(0) if results else {"out": "", "err": ""}
-        return {"out": res.get("out", ""), "err": res.get("err", "")}
+        calls.append(SimpleNamespace(argv=argv, batch=batch, sshpass=env.get("SSHPASS")))
+        res = results.pop(0) if results else {}
+        code = res.get("code", 1 if res.get("err") else 0)
+        return code, res.get("out", ""), res.get("err", "")
 
     def fake_which(name):
         return which.get(name)
 
-    monkeypatch.setattr(sftph_main.osh, "system", fake_system)
+    monkeypatch.setattr(sftph_main, "_system", fake_system)
     monkeypatch.setattr(sftph_main.shutil, "which", fake_which)
 
     return SimpleNamespace(
@@ -255,10 +259,9 @@ def test_password_with_sshpass_uses_it(sftp, cred):
     assert call.argv[0] == "sshpass"
     assert "-e" in call.argv
     assert "BatchMode=no" in call.argv
-    # The password is passed via the environment, only for the duration of the
-    # call — never on the command line.
+    # The password is passed via the environment (SSHPASS), never in the argv.
     assert call.sshpass == "secret"
-    assert "secret" not in call.cmd
+    assert "secret" not in " ".join(call.argv)
     assert os.environ.get("SSHPASS") is None
 
 

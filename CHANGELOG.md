@@ -16,7 +16,10 @@ key-based auth. This is a breaking release.
 ### Changed
 
 - **Backend: system OpenSSH `sftp` instead of paramiko.** Every operation now
-  runs as a short-lived `sftp -b` batch driven through `os_helper.system`.
+  runs as a short-lived `sftp -b` batch subprocess, with success decided by the
+  process **exit code** (so a benign stderr notice — e.g. OpenSSH's
+  post-quantum key-exchange warning — on a successful transfer is never
+  mistaken for a failure). A 30 s `ConnectTimeout` bounds a dead host.
   Authentication matches the operator's own `ssh`/`sftp`: the SSH agent,
   `~/.ssh` default identities, hardware tokens, and `~/.ssh/config` all work.
   Requires the `sftp` binary on `PATH` (preinstalled on macOS, most Linux, and

@@ -264,8 +264,16 @@ def _ssh_options(cred: dict, *, batch_mode: str) -> list[str]:
         opts += ["-i", os.path.expanduser(str(key))]
 
     # BatchMode avoids any interactive hang; strict host-key checking is the
-    # non-negotiable security posture inherited from the paramiko era.
-    opts += ["-o", f"BatchMode={batch_mode}", "-o", "StrictHostKeyChecking=yes"]
+    # non-negotiable security posture inherited from the paramiko era;
+    # ConnectTimeout bounds a dead host so a call never hangs indefinitely.
+    opts += [
+        "-o",
+        f"BatchMode={batch_mode}",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=30",
+    ]
 
     # An extra known_hosts file is *added* to the defaults (kept explicit so we
     # do not accidentally drop the system store while trusting the extra one).
@@ -285,8 +293,30 @@ def _sftp_argv(cred: dict) -> tuple[list[str], dict[str, str]]:
     return argv, env
 
 
-def _run_sftp(cred: dict, commands: list[str], *, check: bool) -> dict:
-    """Run a list of ``sftp`` batch commands against ``cred`` and capture output.
+def _system(argv: list[str], env: dict[str, str]) -> tuple[int, str, str]:
+    """Run ``argv`` (no shell) and return ``(returncode, stdout, stderr)``.
+
+    We drive the process directly rather than through ``os_helper.system``
+    because the **exit code** is the authoritative success signal, and that
+    helper does not expose it — it only asserts on non-zero. That distinction
+    matters: a modern OpenSSH client prints benign notices to stderr (e.g. the
+    post-quantum key-exchange warning) on a fully successful transfer, so
+    "stderr is non-empty" cannot mean "it failed". ``env`` is merged onto the
+    current environment (used only to pass ``SSHPASS`` for password auth,
+    keeping the secret out of the argv).
+    """
+    osh.info("Executing: " + " ".join(shlex.quote(token) for token in argv))
+    proc = subprocess.run(  # noqa: S603 — argv list, shell=False, no injection surface
+        argv,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+    )
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def _run_sftp(cred: dict, commands: list[str]) -> dict:
+    """Run a list of ``sftp`` batch commands against ``cred`` and capture the result.
 
     Parameters
     ----------
@@ -296,46 +326,26 @@ def _run_sftp(cred: dict, commands: list[str], *, check: bool) -> dict:
         Interactive ``sftp`` commands (``put``, ``get``, ``rm``, ``mkdir``,
         ``ls``, ``cd`` ...). Prefix a command with ``-`` to ignore its own
         failure (used for idempotent ``-mkdir``).
-    check : bool
-        When ``True``, assert the process exited 0 (used for transfers where a
-        non-zero exit is unambiguously a failure). When ``False``, return the
-        captured output so the caller can classify a per-file error vs a
-        connection error itself.
 
     Returns
     -------
     dict
-        ``{"out": <stdout>, "err": <stderr>}`` as returned by ``os_helper.system``.
+        ``{"code": <exit status>, "out": <stdout>, "err": <stderr>}``. Callers
+        decide success from ``code`` (0 = success, warnings on ``err`` and all),
+        and only consult ``err`` to *classify* a non-zero exit.
     """
     _require_sftp_binary()
     argv, env = _sftp_argv(cred)
 
     # ``sftp -b`` reads its command list from a file (not stdin), which keeps us
-    # fully non-interactive and lets ``os_helper.system`` capture the result.
-    # A trailing newline is required so the last command is executed.
+    # fully non-interactive. A trailing newline ensures the last command runs.
     fd, batch_path = tempfile.mkstemp(prefix="sftp-helper-", suffix=".batch")
     try:
         with os.fdopen(fd, "w") as fout:
             fout.write("\n".join(commands) + "\n")
         argv += ["-b", batch_path, _target(cred)]
-
-        # ``os_helper.system`` re-parses the command string with ``shlex.split``,
-        # so quoting every token with ``shlex.quote`` round-trips our exact argv
-        # back — spaces, ``@`` and option values survive intact.
-        cmd = " ".join(shlex.quote(token) for token in argv)
-
-        # ``os_helper.system`` inherits the current environment, so slot in the
-        # password (if any) just for the duration of the call, then restore.
-        saved = {k: os.environ.get(k) for k in env}
-        os.environ.update(env)
-        try:
-            return osh.system(cmd, check_exitcode=check)
-        finally:
-            for k, previous in saved.items():
-                if previous is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = previous
+        code, out, err = _system(argv, env)
+        return {"code": code, "out": out, "err": err}
     finally:
         # The batch file may hold a remote path but never a secret; still, leave
         # nothing behind.
@@ -414,7 +424,7 @@ def _remote_size(cred: dict, remote_path: str) -> int | None:
     this never fails a transfer.
     """
     try:
-        res = _run_sftp(cred, [f'ls -l "{remote_path}"'], check=False)
+        res = _run_sftp(cred, [f'ls -l "{remote_path}"'])
         for line in res["out"].splitlines():
             parts = line.split()
             # A long-listing entry: mode string (starts -/d/l), links, owner,
@@ -541,16 +551,17 @@ def _send(cred: dict, local_path: str, remote_path: str, *, upload: bool, desc: 
         _raise_if_connect_error(output, cred, context)
         raise Exception(output.strip() or f"scp exited with status {returncode}")
 
-    # Plain path: no bar, but authoritative exit code + error capture via sftp -b.
+    # Plain path: no bar, but the exit code is authoritative (a benign stderr
+    # notice on a successful transfer must not read as a failure).
     if upload:
         command = f'put -p "{local_path}" "{remote_path}"'
     else:
         command = f'get -p "{remote_path}" "{local_path}"'
-    res = _run_sftp(cred, [command], check=False)
-    err = res["err"]
-    if not osh.emptystring(err):
+    res = _run_sftp(cred, [command])
+    if res["code"] != 0:
+        err = res["err"]
         _raise_if_connect_error(err, cred, context)
-        raise Exception(err.strip())
+        raise Exception(err.strip() or f"sftp exited with status {res['code']}")
 
 
 @contextmanager
@@ -576,8 +587,10 @@ def get_client_sftp(cred: dict) -> Iterator[dict]:
     """
     # A bare ``ls`` of the root exercises exactly the connect + auth + host-key
     # path without touching any user file, so a bad target fails loudly here.
-    res = _run_sftp(cred, ['ls "/"'], check=False)
-    _raise_if_connect_error(res["err"], cred, "connection")
+    res = _run_sftp(cred, ['ls "/"'])
+    if res["code"] != 0:
+        _raise_if_connect_error(res["err"], cred, "connection")
+        raise Exception(f"Connection check failed:\n\t{res['err'].strip()}")
     yield cred
 
 
@@ -658,17 +671,16 @@ def _sftp_exists(cred: dict, remote_path: str) -> bool:
         If the connection/auth fails, or the server returns an error we cannot
         confidently read as "missing".
     """
-    # ``ls`` is the cheapest probe: on success it prints the entry (or a
-    # directory's contents) with empty stderr; on a missing path it writes a
-    # "No such file" error to stderr and exits non-zero.
-    res = _run_sftp(cred, [f'ls "{remote_path}"'], check=False)
-    err = res["err"]
-    if osh.emptystring(err):
+    # ``ls`` is the cheapest probe: exit 0 means the path is there (a benign
+    # stderr notice is irrelevant), a non-zero exit with "No such file" means
+    # absent, and anything else is a real fault we surface.
+    res = _run_sftp(cred, [f'ls "{remote_path}"'])
+    if res["code"] == 0:
         return True
+    err = res["err"]
     if any(marker in err for marker in _NOT_FOUND_MARKERS):
         return False
     _raise_if_connect_error(err, cred, "existence check")
-    # Some other, unexpected server error: surface it rather than guessing.
     raise Exception(f"Unexpected error probing {remote_path}:\n\t{err.strip()}")
 
 
@@ -693,13 +705,12 @@ def _sftp_isdir(cred: dict, remote_path: str) -> bool:
     Exception
         If the connection/auth fails.
     """
-    # ``cd`` is a clean directory test: it succeeds (empty stderr) only for a
-    # directory, and fails for a file ("Not a directory") or a missing path.
-    res = _run_sftp(cred, [f'cd "{remote_path}"'], check=False)
-    err = res["err"]
-    if osh.emptystring(err):
+    # ``cd`` is a clean directory test: it exits 0 only for a directory, and
+    # fails for a file ("Not a directory") or a missing path.
+    res = _run_sftp(cred, [f'cd "{remote_path}"'])
+    if res["code"] == 0:
         return True
-    _raise_if_connect_error(err, cred, "directory check")
+    _raise_if_connect_error(res["err"], cred, "directory check")
     return False
 
 
@@ -789,8 +800,9 @@ def make_remote_directory(ftp_directory: str, cred: dict) -> None:
     for part in parts:
         current = f"{current}/{part}"
         levels.append(f'-mkdir "{current}"')
-    res = _run_sftp(cred, levels, check=False)
-    _raise_if_connect_error(res["err"], cred, "directory creation")
+    res = _run_sftp(cred, levels)
+    if res["code"] != 0:
+        _raise_if_connect_error(res["err"], cred, "directory creation")
 
     # Post-condition: re-stat the full target so a real failure (e.g. a
     # permission problem the ``-`` prefix swallowed) surfaces loudly.
@@ -822,11 +834,11 @@ def delete(sftp_address: str, cred: dict) -> bool:
     """
     remote_path = strip_sftp_path(sftp_address, cred)
     try:
-        # ``rm`` (no ``-`` prefix) so a real removal failure is visible; we read
-        # a "No such file" as success to keep the operation idempotent.
-        res = _run_sftp(cred, [f'rm "{remote_path}"'], check=False)
+        # ``rm`` (no ``-`` prefix) so a real removal failure is visible; a
+        # "No such file" is read as success to keep the operation idempotent.
+        res = _run_sftp(cred, [f'rm "{remote_path}"'])
         err = res["err"]
-        if osh.emptystring(err) or any(m in err for m in _NOT_FOUND_MARKERS):
+        if res["code"] == 0 or any(m in err for m in _NOT_FOUND_MARKERS):
             osh.info(f"SFTP file {sftp_address} successfully deleted (or already absent).")
             return True
         _raise_if_connect_error(err, cred, "deletion")
