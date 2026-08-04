@@ -39,17 +39,34 @@ sftp_https: "https://files.example.com"
 # ============================ AUTHENTICATION (optional) ============================
 # Pick ONE. For SSH-key auth you do NOT need a password. The recommended
 # setup is key-based: no secret ever lives in this file.
+#
+# ---- No SSH key yet? Generate one (the ssh-keygen command is identical on
+#      every OS; it writes the private key to ~/.ssh/id_ed25519 and the public
+#      key to ~/.ssh/id_ed25519.pub) ----
+#
+#   ssh-keygen -t ed25519 -C "you@example.com"
+#
+# Then load the PRIVATE key into your SSH agent so the public key can sign:
+#   macOS   : ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+#   Ubuntu  : eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+#   Windows : Start-Service ssh-agent; ssh-add $HOME\.ssh\id_ed25519   (PowerShell)
+#
+# Finally install the PUBLIC key on the server (its ~/.ssh/authorized_keys):
+#   macOS / Ubuntu : ssh-copy-id -i ~/.ssh/id_ed25519.pub your-login@sftp.example.com
+#   Windows        : type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 
-# OPTIONAL — path to your SSH key.
-# This is how you authenticate WITHOUT a password. Point it at the key you
-# already use to `ssh`/`sftp` into this server, e.g. `~/.ssh/id_ed25519`.
-# You may also point it at the public half (`~/.ssh/id_ed25519.pub`): OpenSSH
-# then delegates the signature to your SSH agent / a hardware token — which is
-# why the *public* key is all that lives on disk in an agent/token setup.
-# Reminder: the matching PUBLIC key must already be installed on the server
+# OPTIONAL — path to your SSH *public* key. This is how you authenticate
+# WITHOUT a password. Point it at your PUBLIC key, e.g. `~/.ssh/id_ed25519.pub`:
+# OpenSSH delegates the signature to your SSH agent / a hardware token, so no
+# private-key material is ever named in — let alone copied into — this file.
+# That is the recommended, security-first default; it requires the matching
+# private key to be loaded in your SSH agent (`ssh-add ~/.ssh/id_ed25519`).
+# If you do NOT run an agent, you may instead point it at the private key
+# itself (`~/.ssh/id_ed25519`); OpenSSH will read it directly.
+# Reminder: the PUBLIC key must already be installed on the server
 # (its ~/.ssh/authorized_keys) — that is the server-side prerequisite.
 # Leave empty to let OpenSSH use the SSH agent and your default ~/.ssh keys.
-sftp_key: ""
+sftp_key: "~/.ssh/id_ed25519.pub"
 
 # OPTIONAL — SFTP password (fallback for servers that do not accept keys).
 # Leave EMPTY ("") to authenticate with your key / SSH agent (recommended).

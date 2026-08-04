@@ -1,8 +1,9 @@
 {
+  "_comment": "JSON has no comments; see sftp_config.yaml.example for the fully-documented template, including how to generate an SSH key (ssh-keygen -t ed25519 -C you@example.com) and install its .pub on the server. sftp_key should point at your PUBLIC key so no private-key material lives here.",
   "sftp_host": "sftp.example.com",
   "sftp_login": "your-login",
   "sftp_https": "https://files.example.com",
-  "sftp_key": "~/.ssh/id_ed25519",
+  "sftp_key": "~/.ssh/id_ed25519.pub",
   "sftp_passwd": "",
   "sftp_destination_path": "",
   "sftp_port": "22",

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0] - 2026-08-03
+## [3.0.0] - 2026-08-04
 
 Swaps the SSH backend from the in-process **paramiko** library to the system
 **OpenSSH `sftp` client**, and relaxes the credentials contract around
@@ -34,9 +34,14 @@ key-based auth. This is a breaking release.
 
 ### Added
 
-- **`sftp_key` credential** — path to your SSH key for password-less auth. May
-  point at the private key *or* its `.pub` companion (OpenSSH then signs via the
-  agent / a hardware token). Empty ⇒ SSH agent + default identities.
+- **`sftp_key` credential** — path to your SSH key for password-less auth. The
+  templates and docs now recommend pointing it at your **public** key
+  (`~/.ssh/id_ed25519.pub`): OpenSSH signs via the agent / a hardware token, so
+  no private-key material is ever named in — let alone copied into — a config
+  file. A private-key path is still accepted (for setups with no agent); empty ⇒
+  SSH agent + default identities.
+- **`.env.example` template** and step-by-step `ssh-keygen` instructions
+  (macOS / Ubuntu / Windows) added across the example files and the READMEs.
 - **Live progress bar on upload *and* download**, matching
   `os_helper.download_file`: on an interactive terminal the transfer runs
   through `scp` under a pseudo-terminal and its meter drives

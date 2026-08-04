@@ -55,10 +55,41 @@ cred = sftph.credentials()
 ```
 
 Required keys: `sftp_host`, `sftp_login`, `sftp_https`. Optional keys:
-`sftp_key` (path to your SSH key — private key or its `.pub`; empty ⇒ SSH
-agent + default `~/.ssh` identities), `sftp_passwd` (password fallback, needs
+`sftp_key` (path to your SSH key — recommended: your **public** key
+`~/.ssh/id_ed25519.pub`, so the agent/token signs and no private-key material
+is named here; a private-key path also works; empty ⇒ SSH agent + default
+`~/.ssh` identities), `sftp_passwd` (password fallback, needs
 `sshpass`), `sftp_destination_path` (default: server root `/`),
 `sftp_port` (default `22`), `sftp_known_hosts` (extra known-hosts file).
+
+### No SSH key yet?
+
+The `ssh-keygen` command is identical on every OS — it writes the private key
+to `~/.ssh/id_ed25519` and the public key to `~/.ssh/id_ed25519.pub`:
+
+```bash
+ssh-keygen -t ed25519 -C "you@example.com"
+```
+
+Load the **private** key into your SSH agent so the public key can sign:
+
+```bash
+# macOS
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+# Ubuntu / Linux
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+# Windows (PowerShell)
+Start-Service ssh-agent; ssh-add $HOME\.ssh\id_ed25519
+```
+
+Install the **public** key on the server (`~/.ssh/authorized_keys`):
+
+```bash
+# macOS / Ubuntu
+ssh-copy-id -i ~/.ssh/id_ed25519.pub your-login@sftp.example.com
+# Windows (PowerShell)
+type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
 
 ## Upload / download / delete
 

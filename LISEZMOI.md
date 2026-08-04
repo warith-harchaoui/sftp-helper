@@ -107,9 +107,12 @@ cp sftp_config.json.example sftp_config.json
 Vous pouvez aussi fournir une version YAML (`sftp_config.yaml`), des variables d'environnement, ou un fichier `.env` — `sftp-helper` essaie dans cet ordre via `os_helper.get_config` :
 
 Seuls **trois** champs sont requis — `sftp_host`, `sftp_login`, `sftp_https`.
-Authentifiez-vous par **clé SSH** (recommandé : sans mot de passe) via `sftp_key`
-ou en chargeant votre clé dans l'agent SSH. `sftp_destination_path` est optionnel
-et vaut par défaut la racine du serveur `/`.
+Authentifiez-vous par **clé SSH** (recommandé : sans mot de passe) en pointant
+`sftp_key` vers votre clé **publique** (`~/.ssh/id_ed25519.pub`) — OpenSSH
+laisse votre agent SSH / jeton matériel réaliser la signature, donc aucune
+matière de clé privée n'est jamais nommée dans ce fichier — ou en chargeant
+votre clé dans l'agent SSH et en laissant `sftp_key` vide.
+`sftp_destination_path` est optionnel et vaut par défaut la racine du serveur `/`.
 
 _JSON_
 ```json
@@ -117,7 +120,7 @@ _JSON_
     "sftp_host": "<sftp_host>",
     "sftp_login": "<sftp_login>",
     "sftp_https": "<sftp_https>",
-    "sftp_key": "~/.ssh/id_ed25519"
+    "sftp_key": "~/.ssh/id_ed25519.pub"
 }
 ```
 ou
@@ -127,10 +130,10 @@ _YAML_
 sftp_host: "<sftp_host>"
 sftp_login: "<sftp_login>"
 sftp_https: "<sftp_https>"
-sftp_key: "~/.ssh/id_ed25519"    # optionnel ; vide -> agent SSH + clés par défaut
-# sftp_passwd: "<sftp_passwd>"   # repli optionnel (nécessite `sshpass`)
-# sftp_destination_path: "/base" # optionnel ; vide -> racine "/"
-# sftp_port: "2022"              # optionnel ; défaut 22
+sftp_key: "~/.ssh/id_ed25519.pub" # clé publique optionnelle ; vide -> agent SSH + clés par défaut
+# sftp_passwd: "<sftp_passwd>"    # repli optionnel (nécessite `sshpass`)
+# sftp_destination_path: "/base"  # optionnel ; vide -> racine "/"
+# sftp_port: "2022"               # optionnel ; défaut 22
 ```
 ou
 
@@ -139,7 +142,7 @@ _VARIABLES D'ENVIRONNEMENT_
 SFTP_HOST="<sftp_host>" \
 SFTP_LOGIN="<sftp_login>" \
 SFTP_HTTPS="<sftp_https>" \
-SFTP_KEY="~/.ssh/id_ed25519" \
+SFTP_KEY="~/.ssh/id_ed25519.pub" \
 python <votre_script_python>
 ```
 ou
@@ -149,17 +152,43 @@ _.env_
 SFTP_HOST                = <sftp_host>
 SFTP_LOGIN               = <sftp_login>
 SFTP_HTTPS               = <sftp_https>
-SFTP_KEY                 = ~/.ssh/id_ed25519
+SFTP_KEY                 = ~/.ssh/id_ed25519.pub
 ```
 
 Où trouver ces informations (dans votre outil FTP préféré — le mien c'est FileZilla) :
   + `<sftp_host>` : l'hôte du serveur, type `sftp.example.com`
   + `<sftp_login>` : votre identifiant
   + `<sftp_https>` : l'URL web correspondant à `sftp_destination_path`
-  + `sftp_key` : la clé SSH que vous utilisez déjà pour `ssh`/`sftp` sur ce
-    serveur (sa moitié publique doit être installée dans `authorized_keys` du
-    serveur) ; ou laissez vide et reposez-vous sur votre agent SSH
+  + `sftp_key` : pointe vers la moitié **publique** de la clé que vous utilisez
+    déjà pour `ssh`/`sftp` sur ce serveur (cette même clé publique doit être
+    installée dans `authorized_keys` du serveur, et la clé privée chargée dans
+    votre agent SSH) ; ou laissez vide et reposez-vous sur votre agent SSH.
+    Uniquement si vous n'utilisez pas d'agent, pointez plutôt vers la clé privée
+    (`~/.ssh/id_ed25519`)
   + `<votre_script_python>` : votre script Python :)
+
+### Pas encore de clé SSH ?
+
+La commande `ssh-keygen` est identique sur tous les OS — elle écrit la clé
+privée dans `~/.ssh/id_ed25519` et la clé publique dans `~/.ssh/id_ed25519.pub` :
+
+```bash
+ssh-keygen -t ed25519 -C "vous@example.com"
+```
+
+Chargez la clé **privée** dans votre agent SSH pour que la clé publique puisse
+signer, puis installez la clé **publique** sur le serveur :
+
+```bash
+# Charger la clé privée dans l'agent
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519          # macOS
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519     # Ubuntu / Linux
+Start-Service ssh-agent; ssh-add $HOME\.ssh\id_ed25519  # Windows (PowerShell)
+
+# Installer la clé publique sur le serveur (~/.ssh/authorized_keys)
+ssh-copy-id -i ~/.ssh/id_ed25519.pub votre-login@sftp.example.com   # macOS / Ubuntu
+type $HOME\.ssh\id_ed25519.pub | ssh votre-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"  # Windows
+```
 
 ## Utilisation
 

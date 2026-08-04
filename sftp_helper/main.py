@@ -10,9 +10,10 @@ via ``os_helper.system``) rather than an in-process SSH library. This is a
 deliberate choice: OpenSSH is the reference SSH implementation, ships on macOS,
 Linux and Windows 10+/Server 2019+, and — crucially — authenticates exactly the
 way the operator's own ``ssh`` / ``sftp`` commands do. In particular it honours
-the SSH agent and lets ``sftp_key`` point at either a private key *or* its
-``.pub`` companion (delegating the signature to the agent / a hardware token),
-which an in-process library cannot do.
+the SSH agent and lets ``sftp_key`` point at your *public* key (the recommended
+value: ``~/.ssh/id_ed25519.pub`` — the agent / a hardware token then performs
+the signature, so no private-key material is named in the config) as readily as
+at a private key, which an in-process library cannot do.
 
 Host key verification is on by default and cannot be disabled: every invocation
 passes ``StrictHostKeyChecking=yes``, so a host whose key is not already in
@@ -114,6 +115,9 @@ _REQUIRED_KEYS = ["sftp_host", "sftp_login", "sftp_https"]
 # Optional credentials, each with a documented fallback:
 #   sftp_passwd            empty  -> authenticate with a key / the SSH agent
 #   sftp_key               unset  -> the SSH agent + default identities
+#                                     (recommended value: your *public* key,
+#                                     e.g. ~/.ssh/id_ed25519.pub — the agent /
+#                                     token signs, so no private key is named)
 #   sftp_destination_path  empty  -> the server root "/"
 #   sftp_port              unset  -> 22
 #   sftp_known_hosts       unset  -> rely on ~/.ssh/known_hosts alone
@@ -255,10 +259,12 @@ def _ssh_options(cred: dict, *, batch_mode: str) -> list[str]:
     # Port (uppercase -P for sftp/scp; lowercase -p means "preserve times").
     opts = ["-P", str(int(cred.get("sftp_port") or 22))]
 
-    # Identity file. Passed verbatim so OpenSSH's native handling applies: the
-    # path may be a private key or its ``.pub`` companion (in which case the
-    # agent / a hardware token performs the signature). Absent -> OpenSSH falls
-    # back to the agent and the default ~/.ssh identities.
+    # Identity file. Passed verbatim so OpenSSH's native handling applies. The
+    # recommended value is the *public* key (``~/.ssh/id_ed25519.pub``): OpenSSH
+    # then delegates the signature to the agent / a hardware token, so no
+    # private-key material is ever named in the config. A private-key path is
+    # equally accepted (read directly, for setups with no agent). Absent ->
+    # OpenSSH falls back to the agent and the default ~/.ssh identities.
     key = cred.get("sftp_key")
     if not osh.emptystring(key):
         opts += ["-i", os.path.expanduser(str(key))]

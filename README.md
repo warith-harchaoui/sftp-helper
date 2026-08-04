@@ -103,9 +103,11 @@ cp sftp_config.json.example sftp_config.json
 You may also provide a YAML version (`sftp_config.yaml`), environment variables, or an `.env` file — `sftp-helper` falls back in that order via `os_helper.get_config`:
 
 Only **three** fields are required — `sftp_host`, `sftp_login`, `sftp_https`.
-Authenticate with an SSH key (recommended: no password) by setting `sftp_key`
-or loading your key into the SSH agent. `sftp_destination_path` is optional and
-defaults to the server root `/`.
+Authenticate with an SSH key (recommended: no password) by pointing `sftp_key`
+at your **public** key (`~/.ssh/id_ed25519.pub`) — OpenSSH lets your SSH agent /
+hardware token do the signing, so no private-key material is ever named in this
+file — or by loading your key into the SSH agent and leaving `sftp_key` empty.
+`sftp_destination_path` is optional and defaults to the server root `/`.
 
 _JSON_
 ```json
@@ -113,7 +115,7 @@ _JSON_
     "sftp_host": "<sftp_host>",
     "sftp_login": "<sftp_login>",
     "sftp_https": "<sftp_https>",
-    "sftp_key": "~/.ssh/id_ed25519"
+    "sftp_key": "~/.ssh/id_ed25519.pub"
 }
 ```
 or
@@ -123,10 +125,10 @@ _YAML_
 sftp_host: "<sftp_host>"
 sftp_login: "<sftp_login>"
 sftp_https: "<sftp_https>"
-sftp_key: "~/.ssh/id_ed25519"    # optional; empty -> SSH agent + default keys
-# sftp_passwd: "<sftp_passwd>"   # optional fallback (needs `sshpass`)
-# sftp_destination_path: "/base" # optional; empty -> server root "/"
-# sftp_port: "2022"              # optional; default 22
+sftp_key: "~/.ssh/id_ed25519.pub" # optional public key; empty -> SSH agent + default keys
+# sftp_passwd: "<sftp_passwd>"    # optional fallback (needs `sshpass`)
+# sftp_destination_path: "/base"  # optional; empty -> server root "/"
+# sftp_port: "2022"               # optional; default 22
 ```
 or
 
@@ -135,7 +137,7 @@ _ENVIRONMENT VARIABLES_
 SFTP_HOST="<sftp_host>" \
 SFTP_LOGIN="<sftp_login>" \
 SFTP_HTTPS="<sftp_https>" \
-SFTP_KEY="~/.ssh/id_ed25519" \
+SFTP_KEY="~/.ssh/id_ed25519.pub" \
 python <your_python_script>
 ```
 or
@@ -145,17 +147,42 @@ _.env_
 SFTP_HOST                = <sftp_host>
 SFTP_LOGIN               = <sftp_login>
 SFTP_HTTPS               = <sftp_https>
-SFTP_KEY                 = ~/.ssh/id_ed25519
+SFTP_KEY                 = ~/.ssh/id_ed25519.pub
 ```
 
 Where to find these (in your favorite FTP tool — mine is FileZilla):
   + `<sftp_host>` is the server host, e.g. `sftp.example.com`
   + `<sftp_login>` is your username
   + `<sftp_https>` corresponds to the web URL of `sftp_destination_path`
-  + `sftp_key` is the SSH key you already use to `ssh`/`sftp` into the server
-    (its public half must be installed in the server's `authorized_keys`); or
-    leave it empty and rely on your SSH agent
+  + `sftp_key` points at the **public** half of the key you already use to
+    `ssh`/`sftp` into the server (that same public key must be installed in the
+    server's `authorized_keys`, and the private key loaded in your SSH agent);
+    or leave it empty and rely on your SSH agent. Only if you run no agent,
+    point it at the private key (`~/.ssh/id_ed25519`) instead.
   + <your_python_script> is your python script :)
+
+### No SSH key yet?
+
+The `ssh-keygen` command is identical on every OS — it writes the private key
+to `~/.ssh/id_ed25519` and the public key to `~/.ssh/id_ed25519.pub`:
+
+```bash
+ssh-keygen -t ed25519 -C "you@example.com"
+```
+
+Load the **private** key into your SSH agent so the public key can sign, then
+install the **public** key on the server:
+
+```bash
+# Load the private key into the agent
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519          # macOS
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519     # Ubuntu / Linux
+Start-Service ssh-agent; ssh-add $HOME\.ssh\id_ed25519  # Windows (PowerShell)
+
+# Install the public key on the server (~/.ssh/authorized_keys)
+ssh-copy-id -i ~/.ssh/id_ed25519.pub your-login@sftp.example.com   # macOS / Ubuntu
+type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"  # Windows
+```
 
 ## Usage
 
