@@ -242,7 +242,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 ## Exposition multi-surface
 
 `sftp-helper` n'est pas qu'une bibliothèque — les mêmes fonctions sont
-exposées comme CLI et comme surface HTTP FastAPI :
+exposées comme CLI, comme surface HTTP FastAPI et comme outils MCP :
 
 ```bash
 # Bibliothèque Python (par défaut)
@@ -262,6 +262,11 @@ sftp-helper-click upload --config sftp_config.json --input local.txt --remote /u
 pip install "sftp-helper[api]"
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
+
+# Outils MCP pour tout hôte agentique compatible (extra [mcp] nécessaire) —
+# même app, avec un endpoint /mcp en plus
+pip install "sftp-helper[mcp]"
+SFTP_HELPER_CONFIG=./sftp_config.json sftp-helper-mcp
 ```
 
 Image Docker (HTTP sur le port 8000) :

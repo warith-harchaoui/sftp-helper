@@ -243,7 +243,7 @@ via the optional `sftp_known_hosts` credential.
 ## Multi-surface exposure
 
 `sftp-helper` is not just a library — the same functions are exposed
-as a CLI and a FastAPI HTTP surface:
+as a CLI, a FastAPI HTTP surface, and MCP tools:
 
 ```bash
 # Python library (default)
@@ -263,6 +263,11 @@ sftp-helper-click upload --config sftp_config.json --input local.txt --remote /u
 pip install "sftp-helper[api]"
 SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
+
+# MCP tools for any MCP-aware agent host (needs the [mcp] extra) — same app,
+# an added /mcp endpoint
+pip install "sftp-helper[mcp]"
+SFTP_HELPER_CONFIG=./sftp_config.json sftp-helper-mcp
 ```
 
 Docker image (HTTP on port 8000):

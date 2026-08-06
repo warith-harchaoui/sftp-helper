@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MCP surface** (`sftp_helper.mcp`, `[mcp]` extra, entry point
+  `sftp-helper-mcp`): exposes the existing FastAPI app (upload, download,
+  delete, exists, dir-exists, mkdir, normalize-path, strip-path, tempfile) as
+  MCP tools via `fastapi-mcp`, so any MCP-aware agent host can call them
+  directly. Mirrors the pattern already shipped in `standpoint` /
+  `vocal-helper` / `md2star` / `os-helper`. Closes the CLI/API/MCP surface
+  gap for sftp-helper flagged in `ai-helpers/.private/do.md` §7.
+
 ## [3.0.0] - 2026-08-04
 
 Swaps the SSH backend from the in-process **paramiko** library to the system
