@@ -69,7 +69,7 @@ manager `remote_tempfile` de `sftp-helper` est la seule implémentation
 de première classe à nettoyage automatique parmi les bibliothèques Python
 retenues ici — seul le binaire `Rclone` s'en approche.
 Sa note **multi-surface** reflète argparse + click + FastAPI
-derrière les mêmes signatures de fonctions, et son **chargeur de config**
+derrière les mêmes signatures de fonctions et son **chargeur de config**
 délègue à `os-helper` (JSON / YAML / env / .env). `Rclone` décroche une
 bonne note de config grâce à son propre format et à une surface REST via
 `rclone rcd`, mais en tant que binaire Go il est plus lourd à installer
@@ -93,5 +93,5 @@ et malaisé à piloter depuis Python.
   fichier sur S3 / GCS / SFTP / disque local sans vous soucier du
   transport sous-jacent.
 - **`Rclone` / `lftp`** — vous avez besoin de synchronisation /
-  réplication multi-backend de qualité production, et appeler un binaire
+  réplication multi-backend de qualité production et appeler un binaire
   externe est acceptable.

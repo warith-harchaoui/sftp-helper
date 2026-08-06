@@ -7,7 +7,7 @@
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 
 Cette boîte à outils nécessite :
-  - un fichier `config.json` pour les paramètres SFTP (ou YAML, ou variables d'environnement, ou `.env`)
+  - un fichier `config.json` pour les paramètres SFTP (ou YAML ou variables d'environnement ou `.env`)
   - que vous ayez préalablement ajouté la clé SSH de votre machine locale sur le serveur SFTP
 
 [🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
@@ -25,7 +25,7 @@ SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer
 ## Fonctionnalités
 
 - **Upload** d'un fichier local vers le serveur — donnez une adresse
-  `sftp://host/path` explicite, ou omettez-la pour obtenir un nom **haché sur le
+  `sftp://host/path` explicite ou omettez-la pour obtenir un nom **haché sur le
   contenu** sous `sftp_destination_path` (des octets identiques se dédupliquent
   vers le même chemin). Barre de progression (mise à l'échelle en octets) pour
   les gros transferts et préservation de la date de modification (mtime).
@@ -51,7 +51,7 @@ SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer
   `StrictHostKeyChecking=yes`, sans échappatoire ; faites confiance à une clé
   supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
 - **Trois surfaces, un seul comportement** — bibliothèque Python, CLI argparse
-  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`), et surface HTTP FastAPI.
+  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`) et surface HTTP FastAPI.
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
@@ -104,7 +104,7 @@ cp sftp_config.json.example sftp_config.json
 # puis éditez sftp_config.json avec vos identifiants
 ```
 
-Vous pouvez aussi fournir une version YAML (`sftp_config.yaml`), des variables d'environnement, ou un fichier `.env` — `sftp-helper` essaie dans cet ordre via `os_helper.get_config` :
+Vous pouvez aussi fournir une version YAML (`sftp_config.yaml`), des variables d'environnement ou un fichier `.env` — `sftp-helper` essaie dans cet ordre via `os_helper.get_config` :
 
 Seuls **trois** champs sont requis — `sftp_host`, `sftp_login`, `sftp_https`.
 Authentifiez-vous par **clé SSH** (recommandé : sans mot de passe) en pointant
@@ -161,7 +161,7 @@ Où trouver ces informations (dans votre outil FTP préféré — le mien c'est 
   + `<sftp_https>` : l'URL web correspondant à `sftp_destination_path`
   + `sftp_key` : pointe vers la moitié **publique** de la clé que vous utilisez
     déjà pour `ssh`/`sftp` sur ce serveur (cette même clé publique doit être
-    installée dans `authorized_keys` du serveur, et la clé privée chargée dans
+    installée dans `authorized_keys` du serveur et la clé privée chargée dans
     votre agent SSH) ; ou laissez vide et reposez-vous sur votre agent SSH.
     Uniquement si vous n'utilisez pas d'agent, pointez plutôt vers la clé privée
     (`~/.ssh/id_ed25519`)
@@ -203,7 +203,7 @@ local_file = "example.txt"
 with open(local_file, "wt") as f:
     f.write("Un petit exemple de texte")
 
-# Charger les identifiants depuis JSON / YAML, ou repli sur .env / variables d'environnement.
+# Charger les identifiants depuis JSON / YAML ou repli sur .env / variables d'environnement.
 cred = sftph.credentials("path/to/sftp_config.json")
 
 remote_file = cred["sftp_destination_path"] + "/" + local_file
