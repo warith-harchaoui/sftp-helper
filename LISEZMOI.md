@@ -16,11 +16,21 @@ Cette boîte à outils nécessite :
 
 SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer avec des serveurs SFTP via le client OpenSSH `sftp` du système. La vérification de la clé d'hôte est active par défaut : `~/.ssh/known_hosts` est consulté et les hôtes inconnus sont refusés.
 
-> **Distant par conception.** `sftp-helper` existe pour déplacer des données vers
-> et depuis un serveur *distant* : il n'est donc volontairement **pas**
-> local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
-> cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
-> média depuis une URL utilisez `youtube-helper`.
+## La promesse
+
+**Distant par conception.** `sftp-helper` existe pour déplacer des données vers
+et depuis un serveur *distant* : il n'est donc volontairement **pas**
+local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
+cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
+média depuis une URL utilisez `youtube-helper`.
+
+## Documentation
+
+[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
+
+[🗺️ Paysage](https://github.com/warith-harchaoui/sftp-helper/blob/main/PAYSAGE.md)
+
+[📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Fonctionnalités
 
@@ -54,14 +64,6 @@ SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer
   (`sftp-helper`), jumeau CLI click (`sftp-helper-click`) et surface HTTP FastAPI.
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
-
-## Documentation
-
-[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
-
-[🗺️ Paysage](https://github.com/warith-harchaoui/sftp-helper/blob/main/PAYSAGE.md)
-
-[📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Installation
 

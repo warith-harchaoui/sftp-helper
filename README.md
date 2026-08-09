@@ -16,10 +16,20 @@ This toolbox requires:
 
 SFTP Helper is a Python library that provides utility functions for working with SFTP servers via the system OpenSSH `sftp` client. Host key verification is on by default — `~/.ssh/known_hosts` is consulted and unknown hosts are rejected.
 
-> **Remote by design.** `sftp-helper` exists to move data to and from a *remote*
-> server, so it is deliberately **not** local-first and ships **no GUI**. For
-> cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
-> downloading media from a URL use `youtube-helper`.
+## The Promise
+
+**Remote by design.** `sftp-helper` exists to move data to and from a *remote*
+server, so it is deliberately **not** local-first and ships **no GUI**. For
+cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
+downloading media from a URL use `youtube-helper`.
+
+## Documentation
+
+[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
+
+[🗺️ Landscape](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md)
+
+[📋 Examples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Features
 
@@ -50,14 +60,6 @@ SFTP Helper is a Python library that provides utility functions for working with
   [multi-surface section](#multi-surface-exposure).
 - Trigger catalogue in
   [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
-
-## Documentation
-
-[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
-
-[🗺️ Landscape](https://github.com/warith-harchaoui/sftp-helper/blob/main/LANDSCAPE.md)
-
-[📋 Examples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
 
 ## Installation
 
