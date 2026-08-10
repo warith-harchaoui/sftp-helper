@@ -71,7 +71,7 @@ CRED_KEYS = {
 
 
 def test_credentials_from_json(tmp_path):
-    cfg = tmp_path / "sftp_config.json"
+    cfg = tmp_path / "settings.json"
     cfg.write_text(json.dumps(CRED_KEYS))
     cred = sftph.credentials(str(cfg))
     for k, v in CRED_KEYS.items():
@@ -79,7 +79,7 @@ def test_credentials_from_json(tmp_path):
 
 
 def test_credentials_from_yaml(tmp_path):
-    cfg = tmp_path / "sftp_config.yaml"
+    cfg = tmp_path / "settings.yaml"
     cfg.write_text(yaml.safe_dump(CRED_KEYS))
     cred = sftph.credentials(str(cfg))
     for k, v in CRED_KEYS.items():
@@ -99,7 +99,7 @@ def test_credentials_from_env(monkeypatch, tmp_path):
 def test_credentials_missing_required_key_raises(tmp_path):
     """Dropping a *required* key (https) makes the loader raise."""
     incomplete = {k: v for k, v in CRED_KEYS.items() if k != "sftp_https"}
-    cfg = tmp_path / "sftp_config.json"
+    cfg = tmp_path / "settings.json"
     cfg.write_text(json.dumps(incomplete))
     with pytest.raises(RuntimeError):
         sftph.credentials(str(cfg))
@@ -112,7 +112,7 @@ def test_credentials_password_is_optional(tmp_path):
         "sftp_login": "alice",
         "sftp_https": "https://example.com/uploads",
     }
-    cfg = tmp_path / "sftp_config.json"
+    cfg = tmp_path / "settings.json"
     cfg.write_text(json.dumps(minimal))
     cred = sftph.credentials(str(cfg))
     assert cred["sftp_login"] == "alice"
@@ -121,7 +121,7 @@ def test_credentials_password_is_optional(tmp_path):
 
 def test_credentials_destination_defaults_to_root(tmp_path):
     """An absent/empty destination path resolves to the server root."""
-    cfg = tmp_path / "sftp_config.json"
+    cfg = tmp_path / "settings.json"
     cfg.write_text(
         json.dumps(
             {

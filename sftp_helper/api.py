@@ -33,7 +33,7 @@ Then run the app with any ASGI server::
 Usage Example
 -------------
 >>> # Start the server (env-configured credentials):
->>> #   SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --reload
+>>> #   SFTP_HELPER_CONFIG=./settings.yaml uvicorn sftp_helper.api:app --reload
 >>> # Upload a file:
 >>> #   curl -F 'file=@local.txt' -F 'remote=/uploads/local.txt' \\
 >>> #        http://localhost:8000/upload

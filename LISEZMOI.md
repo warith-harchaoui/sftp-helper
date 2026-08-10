@@ -7,7 +7,7 @@
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 
 Cette boîte à outils nécessite :
-  - un fichier `config.json` pour les paramètres SFTP (ou YAML ou variables d'environnement ou `.env`)
+  - un fichier `settings.yaml` pour les paramètres SFTP (ou JSON ou variables d'environnement ou `.env`)
   - que vous ayez préalablement ajouté la clé SSH de votre machine locale sur le serveur SFTP
 
 [🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
@@ -99,14 +99,14 @@ pip install "sftp-helper[api]"
 
 ## Écrire votre fichier de configuration
 
-Un template prêt à remplir est committé dans [`sftp_config.json.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.json.example). Copiez-le en `sftp_config.json` et éditez-le sur place — les vrais `*config.json` sont gitignored, donc pas de secret committé par accident :
+Un template prêt à remplir, commenté, est committé dans [`settings.yaml.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/settings.yaml.example). Copiez-le en `settings.yaml` et éditez-le sur place : le vrai `settings.yaml` est gitignored, donc pas de secret committé par accident.
 
 ```bash
-cp sftp_config.json.example sftp_config.json
-# puis éditez sftp_config.json avec vos identifiants
+cp settings.yaml.example settings.yaml
+# puis éditez settings.yaml avec vos identifiants
 ```
 
-Vous pouvez aussi fournir une version YAML (`sftp_config.yaml`), des variables d'environnement ou un fichier `.env` — `sftp-helper` essaie dans cet ordre via `os_helper.get_config` :
+Vous pouvez aussi fournir un fichier JSON, des variables d'environnement ou un fichier `.env` : `sftp-helper` essaie dans cet ordre via `os_helper.get_config`.
 
 Seuls **trois** champs sont requis — `sftp_host`, `sftp_login`, `sftp_https`.
 Authentifiez-vous par **clé SSH** (recommandé : sans mot de passe) en pointant
@@ -116,18 +116,7 @@ matière de clé privée n'est jamais nommée dans ce fichier — ou en chargean
 votre clé dans l'agent SSH et en laissant `sftp_key` vide.
 `sftp_destination_path` est optionnel et vaut par défaut la racine du serveur `/`.
 
-_JSON_
-```json
-{
-    "sftp_host": "<sftp_host>",
-    "sftp_login": "<sftp_login>",
-    "sftp_https": "<sftp_https>",
-    "sftp_key": "~/.ssh/id_ed25519.pub"
-}
-```
-ou
-
-_YAML_
+_YAML_ (`settings.yaml`)
 ```yaml
 sftp_host: "<sftp_host>"
 sftp_login: "<sftp_login>"
@@ -136,6 +125,17 @@ sftp_key: "~/.ssh/id_ed25519.pub" # clé publique optionnelle ; vide -> agent SS
 # sftp_passwd: "<sftp_passwd>"    # repli optionnel (nécessite `sshpass`)
 # sftp_destination_path: "/base"  # optionnel ; vide -> racine "/"
 # sftp_port: "2022"               # optionnel ; défaut 22
+```
+ou
+
+_JSON_
+```json
+{
+    "sftp_host": "<sftp_host>",
+    "sftp_login": "<sftp_login>",
+    "sftp_https": "<sftp_https>",
+    "sftp_key": "~/.ssh/id_ed25519.pub"
+}
 ```
 ou
 
@@ -194,7 +194,7 @@ type $HOME\.ssh\id_ed25519.pub | ssh votre-login@sftp.example.com "mkdir -p ~/.s
 
 ## Utilisation
 
-Voici un exemple d'utilisation de SFTP Helper (**ne fonctionnera pas sans un `path/to/sftp_config.json` valide**) :
+Voici un exemple d'utilisation de SFTP Helper (**ne fonctionnera pas sans un `path/to/settings.yaml` valide**) :
 
 ```python
 import sftp_helper as sftph
@@ -206,7 +206,7 @@ with open(local_file, "wt") as f:
     f.write("Un petit exemple de texte")
 
 # Charger les identifiants depuis JSON / YAML ou repli sur .env / variables d'environnement.
-cred = sftph.credentials("path/to/sftp_config.json")
+cred = sftph.credentials("path/to/settings.yaml")
 
 remote_file = cred["sftp_destination_path"] + "/" + local_file
 url = cred["sftp_https"] + "/" + local_file
@@ -229,7 +229,7 @@ Si vous avez besoin d'un chemin distant unique nettoyé automatiquement, utilise
 import sftp_helper as sftph
 import os_helper as osh
 
-credentials = sftph.credentials("path/to/sftp_config.json")
+credentials = sftph.credentials("path/to/settings.yaml")
 
 with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
     sftph.upload("local.txt", credentials, sftp_address)
@@ -251,24 +251,24 @@ exposées comme CLI, comme surface HTTP FastAPI et comme outils MCP :
 import sftp_helper as sftph
 
 # CLI argparse (installé automatiquement)
-sftp-helper upload   --config sftp_config.json --input local.txt --remote /uploads/local.txt
-sftp-helper download --config sftp_config.json --remote /uploads/local.txt --output out.txt
-sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
-sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
+sftp-helper upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
+sftp-helper download --config settings.yaml --remote /uploads/local.txt --output out.txt
+sftp-helper exists   --config settings.yaml --remote /uploads/local.txt
+sftp-helper mkdir    --config settings.yaml --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
 pip install "sftp-helper[cli]"
-sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
+sftp-helper-click upload --config settings.yaml --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
 pip install "sftp-helper[api]"
-SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
+SFTP_HELPER_CONFIG=./settings.yaml uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
 
 # Outils MCP pour tout hôte agentique compatible (extra [mcp] nécessaire) —
 # même app, avec un endpoint /mcp en plus
 pip install "sftp-helper[mcp]"
-SFTP_HELPER_CONFIG=./sftp_config.json sftp-helper-mcp
+SFTP_HELPER_CONFIG=./settings.yaml sftp-helper-mcp
 ```
 
 Image Docker (HTTP sur le port 8000) :
@@ -276,8 +276,8 @@ Image Docker (HTTP sur le port 8000) :
 ```bash
 docker build -t sftp-helper .
 docker run --rm -p 8000:8000 \
-  -v $PWD/sftp_config.json:/app/sftp_config.json:ro \
-  -e SFTP_HELPER_CONFIG=/app/sftp_config.json \
+  -v $PWD/settings.yaml:/app/settings.yaml:ro \
+  -e SFTP_HELPER_CONFIG=/app/settings.yaml \
   sftp-helper
 ```
 

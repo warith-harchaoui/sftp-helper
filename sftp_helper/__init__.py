@@ -14,7 +14,7 @@ disable verification.
 Usage Example
 -------------
 >>> import sftp_helper as sftph
->>> cred = sftph.credentials("sftp_config.json")
+>>> cred = sftph.credentials("settings.yaml")
 >>> sftph.upload("local.txt", cred, "/remote/base/local.txt")
 >>> assert sftph.remote_file_exists("/remote/base/local.txt", cred)
 >>> sftph.download("/remote/base/local.txt", cred, "roundtrip.txt")

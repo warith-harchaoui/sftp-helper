@@ -27,16 +27,16 @@ Subcommands
 
 Usage Example
 -------------
->>> #   sftp-helper upload         --config sftp_config.json --input local.txt --remote /uploads/local.txt
->>> #   sftp-helper download       --config sftp_config.json --remote /uploads/local.txt --output out.txt
->>> #   sftp-helper delete         --config sftp_config.json --remote /uploads/local.txt
->>> #   sftp-helper exists         --config sftp_config.json --remote /uploads/local.txt
->>> #   sftp-helper dir-exists     --config sftp_config.json --remote /uploads
->>> #   sftp-helper mkdir          --config sftp_config.json --remote /uploads/a/b/c
+>>> #   sftp-helper upload         --config settings.yaml --input local.txt --remote /uploads/local.txt
+>>> #   sftp-helper download       --config settings.yaml --remote /uploads/local.txt --output out.txt
+>>> #   sftp-helper delete         --config settings.yaml --remote /uploads/local.txt
+>>> #   sftp-helper exists         --config settings.yaml --remote /uploads/local.txt
+>>> #   sftp-helper dir-exists     --config settings.yaml --remote /uploads
+>>> #   sftp-helper mkdir          --config settings.yaml --remote /uploads/a/b/c
 >>> #   sftp-helper normalize-path --path //foo/bar/
->>> #   sftp-helper strip-path     --config sftp_config.json --address sftp://host/foo/bar
->>> #   sftp-helper tempfile       --config sftp_config.json --ext txt --subdir batch-42
->>> #   sftp-helper show-credentials --config sftp_config.json
+>>> #   sftp-helper strip-path     --config settings.yaml --address sftp://host/foo/bar
+>>> #   sftp-helper tempfile       --config settings.yaml --ext txt --subdir batch-42
+>>> #   sftp-helper show-credentials --config settings.yaml
 
 Author
 ------

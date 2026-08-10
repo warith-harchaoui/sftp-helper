@@ -20,10 +20,10 @@ Design notes
 
 Usage Example
 -------------
->>> #   sftp-helper-click upload   --config sftp_config.json --input local.txt --remote /uploads/local.txt
->>> #   sftp-helper-click download --config sftp_config.json --remote /uploads/local.txt --output out.txt
->>> #   sftp-helper-click exists   --config sftp_config.json --remote /uploads/local.txt
->>> #   sftp-helper-click mkdir    --config sftp_config.json --remote /uploads/a/b/c
+>>> #   sftp-helper-click upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
+>>> #   sftp-helper-click download --config settings.yaml --remote /uploads/local.txt --output out.txt
+>>> #   sftp-helper-click exists   --config settings.yaml --remote /uploads/local.txt
+>>> #   sftp-helper-click mkdir    --config settings.yaml --remote /uploads/a/b/c
 
 Author
 ------

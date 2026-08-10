@@ -1,19 +1,20 @@
-# sftp_config.yaml.example
+# settings.yaml.example
 # -------------------------
 # Heavily-commented template for sftp-helper credentials.
 #
-# Copy this file to `sftp_config.yaml` and replace every dummy value:
-#     cp sftp_config.yaml.example sftp_config.yaml
+# Copy this file to `settings.yaml` and replace every dummy value:
+#     cp settings.yaml.example settings.yaml
 #
-# `sftp_config.yaml` is gitignored (the *.example template is the ONLY
+# `settings.yaml` is gitignored (the *.example template is the ONLY
 # tracked variant), so you cannot accidentally commit real secrets.
 #
 # sftp-helper discovers credentials in this order (via os_helper.get_config):
 #   1. an explicit --config path (file or directory containing a config)
 #   2. environment variables (SFTP_HOST, SFTP_LOGIN, ...)
 #   3. a .env file
-# A JSON twin (sftp_config.json.example) is also provided; YAML is preferred
-# here precisely because it supports the comments below.
+# A .env twin (.env.example) is also provided for environment-variable-only
+# setups; YAML is preferred here precisely because it supports the comments
+# below.
 #
 # Backend: sftp-helper drives the system OpenSSH `sftp` client, so it
 # authenticates exactly like your own `sftp`/`scp` commands (SSH agent,

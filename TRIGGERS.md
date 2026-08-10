@@ -47,8 +47,7 @@ same flags).
 
 - an `sftp://host/path` address in the prompt;
 - a host + login + remote path;
-- an `sftp_config.json` / `sftp_config.yaml` file or `SFTP_*` env vars, plus a
-  file to move.
+- a `settings.yaml` file or `SFTP_*` env vars, plus a file to move.
 
 ## When NOT to use sftp-helper (SKIP)
 

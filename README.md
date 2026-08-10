@@ -7,7 +7,7 @@
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers` developped for building Artificial Intelligence
 
 This toolbox requires:
-  - a `config.json` for the sftp parameters (or YAML or environment variables or .env)
+  - a `settings.yaml` for the sftp parameters (or JSON or environment variables or .env)
   - that you previously added you SSH key of your local machine in the SFTP server
 
 [🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
@@ -95,14 +95,14 @@ pip install "sftp-helper[api]"
 
 ## Write your own configuration file
 
-A ready-to-fill template is committed at [`sftp_config.json.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.json.example). A heavily-commented YAML variant is also provided at [`sftp_config.yaml.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/sftp_config.yaml.example) — YAML supports inline comments explaining every key and how to obtain its value. Copy either one and edit in place — real `*config.json` / `*config.yaml` files are gitignored so you cannot accidentally commit secrets:
+A ready-to-fill template is committed at [`settings.yaml.example`](https://github.com/warith-harchaoui/sftp-helper/blob/main/settings.yaml.example), with inline comments explaining every key and how to obtain its value. Copy it and edit in place — the real `settings.yaml` is gitignored so you cannot accidentally commit secrets:
 
 ```bash
-cp sftp_config.json.example sftp_config.json
-# then edit sftp_config.json with your credentials
+cp settings.yaml.example settings.yaml
+# then edit settings.yaml with your credentials
 ```
 
-You may also provide a YAML version (`sftp_config.yaml`), environment variables, or an `.env` file — `sftp-helper` falls back in that order via `os_helper.get_config`:
+You may also provide a JSON file, environment variables, or an `.env` file — `sftp-helper` falls back in that order via `os_helper.get_config`:
 
 Only **three** fields are required — `sftp_host`, `sftp_login`, `sftp_https`.
 Authenticate with an SSH key (recommended: no password) by pointing `sftp_key`
@@ -110,6 +110,18 @@ at your **public** key (`~/.ssh/id_ed25519.pub`) — OpenSSH lets your SSH agent
 hardware token do the signing, so no private-key material is ever named in this
 file — or by loading your key into the SSH agent and leaving `sftp_key` empty.
 `sftp_destination_path` is optional and defaults to the server root `/`.
+
+_YAML_ (`settings.yaml`)
+```yaml
+sftp_host: "<sftp_host>"
+sftp_login: "<sftp_login>"
+sftp_https: "<sftp_https>"
+sftp_key: "~/.ssh/id_ed25519.pub" # optional public key; empty -> SSH agent + default keys
+# sftp_passwd: "<sftp_passwd>"    # optional fallback (needs `sshpass`)
+# sftp_destination_path: "/base"  # optional; empty -> server root "/"
+# sftp_port: "2022"               # optional; default 22
+```
+or
 
 _JSON_
 ```json
@@ -119,18 +131,6 @@ _JSON_
     "sftp_https": "<sftp_https>",
     "sftp_key": "~/.ssh/id_ed25519.pub"
 }
-```
-or
-
-_YAML_
-```yaml
-sftp_host: "<sftp_host>"
-sftp_login: "<sftp_login>"
-sftp_https: "<sftp_https>"
-sftp_key: "~/.ssh/id_ed25519.pub" # optional public key; empty -> SSH agent + default keys
-# sftp_passwd: "<sftp_passwd>"    # optional fallback (needs `sshpass`)
-# sftp_destination_path: "/base"  # optional; empty -> server root "/"
-# sftp_port: "2022"               # optional; default 22
 ```
 or
 
@@ -190,7 +190,7 @@ type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ss
 
 For the full catalog of recipes (uploads, downloads, existence checks, recursive directory creation, temporary remote files with auto-cleanup, strict host-key verification), see [📋 EXAMPLES.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md).
 
-Here's an example of how to use SFTP helper (**won't work without a valid `path/to/sftp_config.json`**):
+Here's an example of how to use SFTP helper (**won't work without a valid `path/to/settings.yaml`**):
 
 ```python
 import sftp_helper as sftph
@@ -202,7 +202,7 @@ with open(local_file, "wt") as f:
     f.write("A small example of text")
 
 # Load creds from JSON / YAML file, or fall back to .env / environment vars.
-cred = sftph.credentials("path/to/sftp_config.json")
+cred = sftph.credentials("path/to/settings.yaml")
 
 remote_file = cred["sftp_destination_path"] + "/" + local_file
 url = cred["sftp_https"] + "/" + local_file
@@ -226,7 +226,7 @@ If you need a unique remote path that gets cleaned up automatically, use the
 import sftp_helper as sftph
 import os_helper as osh
 
-credentials = sftph.credentials("path/to/sftp_config.json")
+credentials = sftph.credentials("path/to/settings.yaml")
 
 with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
     sftph.upload("local.txt", credentials, sftp_address)
@@ -252,24 +252,24 @@ as a CLI, a FastAPI HTTP surface, and MCP tools:
 import sftp_helper as sftph
 
 # argparse-based CLI (installed automatically)
-sftp-helper upload   --config sftp_config.json --input local.txt --remote /uploads/local.txt
-sftp-helper download --config sftp_config.json --remote /uploads/local.txt --output out.txt
-sftp-helper exists   --config sftp_config.json --remote /uploads/local.txt
-sftp-helper mkdir    --config sftp_config.json --remote /uploads/a/b/c
+sftp-helper upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
+sftp-helper download --config settings.yaml --remote /uploads/local.txt --output out.txt
+sftp-helper exists   --config settings.yaml --remote /uploads/local.txt
+sftp-helper mkdir    --config settings.yaml --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
 pip install "sftp-helper[cli]"
-sftp-helper-click upload --config sftp_config.json --input local.txt --remote /uploads/local.txt
+sftp-helper-click upload --config settings.yaml --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
 pip install "sftp-helper[api]"
-SFTP_HELPER_CONFIG=./sftp_config.json uvicorn sftp_helper.api:app --port 8000
+SFTP_HELPER_CONFIG=./settings.yaml uvicorn sftp_helper.api:app --port 8000
 # → OpenAPI docs at http://localhost:8000/docs
 
 # MCP tools for any MCP-aware agent host (needs the [mcp] extra) — same app,
 # an added /mcp endpoint
 pip install "sftp-helper[mcp]"
-SFTP_HELPER_CONFIG=./sftp_config.json sftp-helper-mcp
+SFTP_HELPER_CONFIG=./settings.yaml sftp-helper-mcp
 ```
 
 Docker image (HTTP on port 8000):
@@ -277,8 +277,8 @@ Docker image (HTTP on port 8000):
 ```bash
 docker build -t sftp-helper .
 docker run --rm -p 8000:8000 \
-  -v $PWD/sftp_config.json:/app/sftp_config.json:ro \
-  -e SFTP_HELPER_CONFIG=/app/sftp_config.json \
+  -v $PWD/settings.yaml:/app/settings.yaml:ro \
+  -e SFTP_HELPER_CONFIG=/app/settings.yaml \
   sftp-helper
 ```
 

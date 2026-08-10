@@ -7,7 +7,7 @@ import sftp_helper as sftph
 import os_helper as osh
 ```
 
-and that you have written your credentials to `path/to/sftp_config.json`
+and that you have written your credentials to `path/to/settings.yaml`
 (or YAML, or `.env`, or environment variables — see the README for the
 required keys).
 
@@ -48,7 +48,7 @@ environment variables. The fallback order is dictated by
 
 ```python
 # From a JSON / YAML file
-cred = sftph.credentials("path/to/sftp_config.json")
+cred = sftph.credentials("path/to/settings.yaml")
 
 # Or fall back to .env / SFTP_* environment variables
 cred = sftph.credentials()
@@ -165,7 +165,7 @@ location, point at the extra known-hosts file via the optional
 `sftp_known_hosts` credential:
 
 ```python
-cred = sftph.credentials("path/to/sftp_config.json")
+cred = sftph.credentials("path/to/settings.yaml")
 cred["sftp_known_hosts"] = "/etc/ssh/known_hosts.d/inbox-prod"
 sftph.upload("payload.json", cred, "/inbox/payload.json")
 ```
@@ -191,7 +191,7 @@ s3_cred = bh.credentials("path/to/s3_config.json")
 s3_uri = bh.upload("monthly_report.pdf", s3_cred, "reports/2026-06.pdf")
 
 # Mirror to SFTP partner
-sftp_cred = sftph.credentials("path/to/sftp_config.json")
+sftp_cred = sftph.credentials("path/to/settings.yaml")
 sftph.upload("monthly_report.pdf", sftp_cred, "/inbox/2026-06.pdf")
 
 print(f"Archived at {s3_uri}; delivered to SFTP partner.")
