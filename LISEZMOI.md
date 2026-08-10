@@ -30,7 +30,7 @@ média depuis une URL utilisez `youtube-helper`.
 
 [🗺️ Paysage](https://github.com/warith-harchaoui/sftp-helper/blob/main/PAYSAGE.md)
 
-[📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md)
+[📋 Exemples](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXEMPLES.md)
 
 ## Fonctionnalités
 

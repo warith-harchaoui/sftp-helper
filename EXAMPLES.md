@@ -187,7 +187,7 @@ import sftp_helper as sftph
 osh.verbosity(2)
 
 # Long-term archive on S3
-s3_cred = bh.credentials("path/to/s3_config.json")
+s3_cred = bh.credentials("path/to/settings.yaml")
 s3_uri = bh.upload("monthly_report.pdf", s3_cred, "reports/2026-06.pdf")
 
 # Mirror to SFTP partner
