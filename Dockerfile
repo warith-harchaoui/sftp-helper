@@ -24,15 +24,15 @@
 #     -e SFTP_HTTPS=https://example.com/uploads \
 #     sftp-helper
 #
-# Run (credentials via mounted JSON file):
+# Run (credentials via mounted YAML file):
 #   docker run --rm -p 8000:8000 \
-#     -v $PWD/sftp_config.json:/app/sftp_config.json:ro \
-#     -e SFTP_HELPER_CONFIG=/app/sftp_config.json \
+#     -v $PWD/settings.yaml:/app/settings.yaml:ro \
+#     -e SFTP_HELPER_CONFIG=/app/settings.yaml \
 #     sftp-helper
 #
 # Run CLI one-shot:
 #   docker run --rm -v $PWD:/data \
-#     -e SFTP_HELPER_CONFIG=/data/sftp_config.json \
+#     -e SFTP_HELPER_CONFIG=/data/settings.yaml \
 #     sftp-helper \
 #     sftp-helper upload --input /data/local.txt --remote /uploads/local.txt
 
@@ -53,13 +53,17 @@ RUN useradd --create-home --shell /bin/bash app
 WORKDIR /app
 
 # --- deps -------------------------------------------------------------------
-# Copy the package first so pip picks up pyproject.toml before we invalidate
-# the layer with source changes.
+# requirements.txt first (core deps only) so this layer caches independently
+# of source changes; the package itself (with its extras) is installed once
+# the source is in place, right below.
+COPY --chown=app:app requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
 COPY --chown=app:app pyproject.toml README.md LICENSE ./
 COPY --chown=app:app sftp_helper ./sftp_helper
 
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir '.[api]'
+RUN pip install --no-cache-dir '.[api]'
 
 # --- runtime ----------------------------------------------------------------
 USER app
