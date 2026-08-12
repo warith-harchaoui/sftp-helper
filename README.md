@@ -85,12 +85,13 @@ pip install "sftp-helper[api]"       # FastAPI HTTP surface
 ### From source (no PyPI)
 
 ```bash
-# Core SFTP utilities (library + argparse CLI)
-pip install sftp-helper
+git clone https://github.com/warith-harchaoui/sftp-helper.git
+cd sftp-helper
+pip install -e .
 
 # Optional surfaces
-pip install "sftp-helper[cli]"
-pip install "sftp-helper[api]"
+pip install -e ".[cli]"
+pip install -e ".[api]"
 ```
 
 ## Write your own configuration file
