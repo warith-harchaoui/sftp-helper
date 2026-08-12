@@ -1,4 +1,4 @@
-# TRIGGERS — sftp-helper
+# TRIGGERS: sftp-helper
 
 This is the user-facing, exhaustive catalogue of what `sftp-helper` can do and
 the natural-language phrasings, commands, functions, and context cues that should
@@ -53,20 +53,20 @@ same flags).
 
 - Plain **FTP / FTPS** (not SFTP-over-SSH), **SCP-only**, or the user explicitly
   wants `scp` / `rsync` shell tooling.
-- **Cloud object storage** — S3 / GCS / Azure / MinIO / R2 / B2 → use
+- **Cloud object storage**: S3 / GCS / Azure / MinIO / R2 / B2, use
   `bucket-helper`.
 - **Local-only** file copy / move with no remote server.
-- **Downloading media from a URL / YouTube** → use `youtube-helper`.
+- **Downloading media from a URL / YouTube**: use `youtube-helper`.
 - **Interactive SSH shell / remote command execution** (paramiko `exec_command`,
-  Fabric) — that is not a file transfer.
-- **Browsing a remote tree in a GUI** (FileZilla, Cyberduck, Transmit) —
+  Fabric): that is not a file transfer.
+- **Browsing a remote tree in a GUI** (FileZilla, Cyberduck, Transmit):
   sftp-helper has no GUI.
 
 ## See also
 
-- [`README.md`](README.md) — features, install, quick start.
-- [`EXAMPLES.md`](EXAMPLES.md) — runnable recipes.
-- [`LANDSCAPE.md`](LANDSCAPE.md) — how sftp-helper compares to paramiko, pysftp,
+- [`README.md`](README.md): features, install, quick start.
+- [`EXAMPLES.md`](EXAMPLES.md): runnable recipes.
+- [`LANDSCAPE.md`](LANDSCAPE.md): how sftp-helper compares to paramiko, pysftp,
   asyncssh, Fabric, smart-open, PyFilesystem2, lftp, Rclone.
-- [`GUI.md`](GUI.md) — a *design plan* for a possible future dashboard (no GUI
+- [`GUI.md`](GUI.md): a *design plan* for a possible future dashboard (no GUI
   ships today).

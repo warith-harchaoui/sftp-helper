@@ -4,11 +4,11 @@
 
 Related and competing Python libraries in the "talk to an SFTP server"
 space, benchmarked against `sftp-helper`. Ratings are ⭐ (1) to
-⭐⭐⭐⭐⭐ (5), scored on `sftp-helper`'s intended job — everyday SFTP
+⭐⭐⭐⭐⭐ (5), scored on `sftp-helper`'s intended job: everyday SFTP
 handling for AI pipelines (upload, download, exists, mkdir -p, temp
 remote files with auto-cleanup, strict host-key verification). A
 library optimised for a very different job (e.g. large-scale
-enterprise transfer orchestration, GUI clients) is not penalised — the
+enterprise transfer orchestration, GUI clients) is not penalised; the
 score just reflects fit to *this* niche. `sftp-helper` is deliberately
 a **remote** tool: it talks to a live SSH/SFTP server, so there is no
 local-first mode to score here.
@@ -47,7 +47,7 @@ supply-chain hygiene** (strict host-key verification with no opt-out
 flag, `os-helper`-based credential discovery, multi-surface exposure).
 It intentionally does *not* try to compete with `Fabric` on task
 orchestration or with `Rclone` on multi-backend replication, and it
-drives the **system OpenSSH `sftp` client** — so it has no Python SSH
+drives the **system OpenSSH `sftp` client**, so it has no Python SSH
 dependency at all (only `os-helper`), and authenticates exactly like
 your own `ssh`/`sftp` (agent, `~/.ssh/config`, hardware tokens). You
 only pay for the FastAPI / click surfaces if you install their extras.
@@ -63,7 +63,7 @@ A few notes behind the ratings. On **host-key verification**,
 yourself, while `asyncssh` and `Rclone` verify by default. On
 **temp remote file**, `sftp-helper`'s `remote_tempfile` context manager
 is the only first-class, auto-cleaning implementation among the Python
-libraries here — only `Rclone`'s binary comes close. Its
+libraries here; only `Rclone`'s binary comes close. Its
 **multi-surface** score reflects argparse + click + FastAPI behind
 the same function signatures, and its **config loader** delegates to
 `os-helper` (JSON / YAML / env / .env). `Rclone` earns a strong config
@@ -73,18 +73,18 @@ Python.
 
 ## When to pick what
 
-- **`sftp-helper`** — SFTP prep for AI pipelines: batch uploads,
+- **`sftp-helper`**: SFTP prep for AI pipelines: batch uploads,
   temporary remote scratch files, strict host-key hygiene, one-shot
   CLI + HTTP surfaces.
-- **`paramiko`** — you need low-level SSH primitives (port forwarding,
+- **`paramiko`**: you need low-level SSH primitives (port forwarding,
   interactive sessions, custom key algorithms) and are prepared to
   wire the host-key policy yourself.
-- **`asyncssh`** — you already run an `asyncio` event loop and want
+- **`asyncssh`**: you already run an `asyncio` event loop and want
   zero-copy between SFTP I/O and the rest of your async pipeline.
-- **`Fabric`** — task orchestration over SSH (deployments, remote
+- **`Fabric`**: task orchestration over SSH (deployments, remote
   scripts), not just file transfer.
-- **`smart-open` / `PyFilesystem2`** — you want a single file-like
+- **`smart-open` / `PyFilesystem2`**: you want a single file-like
   API across S3 / GCS / SFTP / local without caring about the
   underlying transport.
-- **`Rclone` / `lftp`** — you need production-grade multi-backend
+- **`Rclone` / `lftp`**: you need production-grade multi-backend
   sync / replication, and calling out to a binary is acceptable.

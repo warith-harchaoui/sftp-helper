@@ -8,7 +8,7 @@ import os_helper as osh
 ```
 
 and that you have written your credentials to `path/to/settings.yaml`
-(or YAML, or `.env`, or environment variables — see the README for the
+(or YAML, or `.env`, or environment variables; see the README for the
 required keys).
 
 ---
@@ -55,7 +55,7 @@ cred = sftph.credentials()
 ```
 
 Required keys: `sftp_host`, `sftp_login`, `sftp_https`. Optional keys:
-`sftp_key` (path to your SSH key — recommended: your **public** key
+`sftp_key` (path to your SSH key, recommended: your **public** key
 `~/.ssh/id_ed25519.pub`, so the agent/token signs and no private-key material
 is named here; a private-key path also works; empty ⇒ SSH agent + default
 `~/.ssh` identities), `sftp_passwd` (password fallback, needs
@@ -64,7 +64,7 @@ is named here; a private-key path also works; empty ⇒ SSH agent + default
 
 ### No SSH key yet?
 
-The `ssh-keygen` command is identical on every OS — it writes the private key
+The `ssh-keygen` command is identical on every OS: it writes the private key
 to `~/.ssh/id_ed25519` and the public key to `~/.ssh/id_ed25519.pub`:
 
 ```bash
@@ -106,7 +106,7 @@ sftph.upload("report.pdf", cred, "/inbox/report.pdf")
 sftph.download("/inbox/report.pdf", cred)
 sftph.download("/inbox/report.pdf", cred, "local_copy.pdf")
 
-# Delete — idempotent (returns True if the remote file is gone after the call)
+# Delete, idempotent (returns True if the remote file is gone after the call)
 sftph.delete("/inbox/report.pdf", cred)
 ```
 
@@ -124,7 +124,7 @@ if sftph.remote_dir_exist("/inbox/", cred):
 
 ## Create remote directories
 
-`make_remote_directory(path, cred)` is recursive — it walks each
+`make_remote_directory(path, cred)` is recursive: it walks each
 intermediate level and creates the missing ones.
 
 ```python
@@ -138,7 +138,7 @@ it automatically on block exit, even if an exception is raised.
 
 ```python
 with sftph.remote_tempfile(cred, ext="json") as (sftp_address, url):
-    # The file does NOT exist yet — upload to it:
+    # The file does NOT exist yet: upload to it:
     sftph.upload("payload.json", cred, sftp_address)
 
     # Hand the URL to a downstream consumer (webhook, transcoder, ...).

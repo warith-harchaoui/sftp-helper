@@ -4,13 +4,13 @@
 
 Bibliothèques Python voisines et concurrentes dans l'espace « dialoguer
 avec un serveur SFTP », comparées à `sftp-helper`. Les notes vont de
-⭐ (1) à ⭐⭐⭐⭐⭐ (5), évaluées sur la tâche visée par `sftp-helper` —
+⭐ (1) à ⭐⭐⭐⭐⭐ (5), évaluées sur la tâche visée par `sftp-helper` :
 la gestion SFTP au quotidien pour les pipelines d'IA (upload, download,
 existence, mkdir -p, fichiers distants temporaires à nettoyage
 automatique, vérification stricte de la clé d'hôte). Une bibliothèque
 optimisée pour un tout autre usage (par ex. l'orchestration de
 transferts à grande échelle en entreprise, les clients graphiques)
-n'est pas pénalisée — la note reflète seulement l'adéquation à *ce*
+n'est pas pénalisée : la note reflète seulement l'adéquation à *ce*
 créneau. `sftp-helper` est délibérément un outil **distant** : il
 dialogue avec un serveur SSH/SFTP en direct, il n'y a donc pas de mode
 local à évaluer ici.
@@ -50,7 +50,7 @@ ligne) et d'une **hygiène moderne de la chaîne d'approvisionnement**
 découverte des identifiants via `os-helper`, exposition multi-surface).
 Il ne cherche délibérément *pas* à concurrencer `Fabric` sur
 l'orchestration de tâches ni `Rclone` sur la réplication multi-backend,
-et il s'appuie sur le **client OpenSSH `sftp` du système** — il n'a donc
+et il s'appuie sur le **client OpenSSH `sftp` du système**, il n'a donc
 aucune dépendance SSH Python (seulement `os-helper`) et s'authentifie
 exactement comme vos propres `ssh`/`sftp` (agent, `~/.ssh/config`, clés
 matérielles). On ne paie les surfaces FastAPI / click que si on installe
@@ -67,7 +67,7 @@ vérifient que si on le câble soi-même, tandis qu'`asyncssh` et `Rclone`
 vérifient par défaut. Sur le **fichier distant temporaire**, le context
 manager `remote_tempfile` de `sftp-helper` est la seule implémentation
 de première classe à nettoyage automatique parmi les bibliothèques Python
-retenues ici — seul le binaire `Rclone` s'en approche.
+retenues ici ; seul le binaire `Rclone` s'en approche.
 Sa note **multi-surface** reflète argparse + click + FastAPI
 derrière les mêmes signatures de fonctions et son **chargeur de config**
 délègue à `os-helper` (JSON / YAML / env / .env). `Rclone` décroche une
@@ -77,21 +77,21 @@ et malaisé à piloter depuis Python.
 
 ## Quand choisir quoi
 
-- **`sftp-helper`** — préparation SFTP pour les pipelines d'IA : uploads
+- **`sftp-helper`** : préparation SFTP pour les pipelines d'IA : uploads
   par lots, fichiers de travail distants temporaires, hygiène stricte de
   la clé d'hôte, surfaces CLI + HTTP en un coup.
-- **`paramiko`** — vous avez besoin de primitives SSH bas niveau
+- **`paramiko`** : vous avez besoin de primitives SSH bas niveau
   (redirection de ports, sessions interactives, algorithmes de clé sur
   mesure) et vous êtes prêt à câbler la politique de clé d'hôte
   vous-même.
-- **`asyncssh`** — vous faites déjà tourner une boucle d'événements
+- **`asyncssh`** : vous faites déjà tourner une boucle d'événements
   `asyncio` et voulez zéro copie entre les E/S SFTP et le reste de votre
   pipeline asynchrone.
-- **`Fabric`** — orchestration de tâches par SSH (déploiements, scripts
+- **`Fabric`** : orchestration de tâches par SSH (déploiements, scripts
   distants), pas seulement le transfert de fichiers.
-- **`smart-open` / `PyFilesystem2`** — vous voulez une seule API de type
+- **`smart-open` / `PyFilesystem2`** : vous voulez une seule API de type
   fichier sur S3 / GCS / SFTP / disque local sans vous soucier du
   transport sous-jacent.
-- **`Rclone` / `lftp`** — vous avez besoin de synchronisation /
+- **`Rclone` / `lftp`** : vous avez besoin de synchronisation /
   réplication multi-backend de qualité production et appeler un binaire
   externe est acceptable.

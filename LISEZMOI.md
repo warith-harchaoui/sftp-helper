@@ -34,22 +34,22 @@ média depuis une URL utilisez `youtube-helper`.
 
 ## Fonctionnalités
 
-- **Upload** d'un fichier local vers le serveur — donnez une adresse
+- **Upload** d'un fichier local vers le serveur. Donnez une adresse
   `sftp://host/path` explicite ou omettez-la pour obtenir un nom **haché sur le
   contenu** sous `sftp_destination_path` (des octets identiques se dédupliquent
   vers le même chemin). Barre de progression (mise à l'échelle en octets) pour
   les gros transferts et préservation de la date de modification (mtime).
 - **Download** d'un fichier distant vers le disque (par défaut le nom de base
   distant), avec barre de progression et préservation du mtime distant.
-- **Delete** d'un fichier distant — **idempotent** : supprimer un fichier absent
+- **Delete** d'un fichier distant, **idempotent** : supprimer un fichier absent
   réussit.
 - **Vérifications d'existence** pour un **fichier** distant (`remote_file_exists`)
   et un **répertoire** distant (`remote_dir_exist`).
 - **Création de répertoires distants** avec la sémantique `mkdir -p`
-  (`make_remote_directory`) — chaque niveau intermédiaire manquant est créé.
+  (`make_remote_directory`) : chaque niveau intermédiaire manquant est créé.
 - **Helpers de chemin** : `normalize_path` (un seul `/` initial, pas de `/` final)
   et `strip_sftp_path` (retire le schéma `sftp://` + l'hôte).
-- **Context manager `remote_tempfile`** — réserve un chemin distant aléatoire
+- **Context manager `remote_tempfile`** : réserve un chemin distant aléatoire
   unique (optionnellement sous un sous-dossier, optionnellement avec une
   extension) **supprimé automatiquement à la sortie du bloc**, même si une
   exception se propage ; retourne à la fois l'adresse `sftp://` et son URL HTTPS
@@ -57,17 +57,17 @@ média depuis une URL utilisez `youtube-helper`.
 - **Chargeur d'identifiants** (`credentials`) résolvant JSON / YAML / dossier /
   variables d'environnement `SFTP_*` / `.env`, avec une vue masquée
   `show-credentials`.
-- **Vérification stricte de la clé d'hôte, toujours active** — OpenSSH
+- **Vérification stricte de la clé d'hôte, toujours active** : OpenSSH
   `StrictHostKeyChecking=yes`, sans échappatoire ; faites confiance à une clé
   supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
-- **Trois surfaces, un seul comportement** — bibliothèque Python, CLI argparse
+- **Trois surfaces, un seul comportement** : bibliothèque Python, CLI argparse
   (`sftp-helper`), jumeau CLI click (`sftp-helper-click`) et surface HTTP FastAPI.
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
 ## Installation
 
-**Prérequis** — **Python 3.10–3.13** et **git**, multiplateforme :
+**Prérequis** : **Python 3.10–3.13** et **git**, multiplateforme :
 
 - 🍎 **macOS** ([Homebrew](https://brew.sh)) : `brew install python git`
 - 🐧 **Ubuntu/Debian** : `sudo apt update && sudo apt install -y python3 python3-pip git`
@@ -108,12 +108,12 @@ cp settings.yaml.example settings.yaml
 
 Vous pouvez aussi fournir un fichier JSON, des variables d'environnement ou un fichier `.env` : `sftp-helper` essaie dans cet ordre via `os_helper.get_config`.
 
-Seuls **trois** champs sont requis — `sftp_host`, `sftp_login`, `sftp_https`.
+Seuls **trois** champs sont requis : `sftp_host`, `sftp_login`, `sftp_https`.
 Authentifiez-vous par **clé SSH** (recommandé : sans mot de passe) en pointant
-`sftp_key` vers votre clé **publique** (`~/.ssh/id_ed25519.pub`) — OpenSSH
+`sftp_key` vers votre clé **publique** (`~/.ssh/id_ed25519.pub`) ; OpenSSH
 laisse votre agent SSH / jeton matériel réaliser la signature, donc aucune
-matière de clé privée n'est jamais nommée dans ce fichier — ou en chargeant
-votre clé dans l'agent SSH et en laissant `sftp_key` vide.
+matière de clé privée n'est jamais nommée dans ce fichier. Vous pouvez aussi charger
+votre clé dans l'agent SSH et laisser `sftp_key` vide.
 `sftp_destination_path` est optionnel et vaut par défaut la racine du serveur `/`.
 
 _YAML_ (`settings.yaml`)
@@ -157,7 +157,7 @@ SFTP_HTTPS               = <sftp_https>
 SFTP_KEY                 = ~/.ssh/id_ed25519.pub
 ```
 
-Où trouver ces informations (dans votre outil FTP préféré — le mien c'est FileZilla) :
+Où trouver ces informations (dans votre outil FTP préféré, le mien c'est FileZilla) :
   + `<sftp_host>` : l'hôte du serveur, type `sftp.example.com`
   + `<sftp_login>` : votre identifiant
   + `<sftp_https>` : l'URL web correspondant à `sftp_destination_path`
@@ -171,7 +171,7 @@ Où trouver ces informations (dans votre outil FTP préféré — le mien c'est 
 
 ### Pas encore de clé SSH ?
 
-La commande `ssh-keygen` est identique sur tous les OS — elle écrit la clé
+La commande `ssh-keygen` est identique sur tous les OS : elle écrit la clé
 privée dans `~/.ssh/id_ed25519` et la clé publique dans `~/.ssh/id_ed25519.pub` :
 
 ```bash
@@ -243,7 +243,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 ## Exposition multi-surface
 
-`sftp-helper` n'est pas qu'une bibliothèque — les mêmes fonctions sont
+`sftp-helper` n'est pas qu'une bibliothèque : les mêmes fonctions sont
 exposées comme CLI, comme surface HTTP FastAPI et comme outils MCP :
 
 ```bash
@@ -265,8 +265,8 @@ pip install "sftp-helper[api]"
 SFTP_HELPER_CONFIG=./settings.yaml uvicorn sftp_helper.api:app --port 8000
 # → docs OpenAPI sur http://localhost:8000/docs
 
-# Outils MCP pour tout hôte agentique compatible (extra [mcp] nécessaire) —
-# même app, avec un endpoint /mcp en plus
+# Outils MCP pour tout hôte agentique compatible (extra [mcp] nécessaire),
+# la même app avec un endpoint /mcp en plus
 pip install "sftp-helper[mcp]"
 SFTP_HELPER_CONFIG=./settings.yaml sftp-helper-mcp
 ```
@@ -285,7 +285,7 @@ Voir [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/T
 commandes et fonctions qui l'invoquent (et des cas où préférer `bucket-helper` /
 `youtube-helper`).
 
-Il n'y a **aucune interface graphique** — un *plan de conception* de tableau de
+Il n'y a **aucune interface graphique**. Un *plan de conception* de tableau de
 bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live)
 vit dans [GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
@@ -299,4 +299,4 @@ Remerciements chaleureux à [Mohamed Chelali](https://mchelali.github.io) et [Ba
 
 ## Licence
 
-Ce projet est distribué sous licence BSD-3-Clause — voir le fichier [LICENSE](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) pour les détails.
+Ce projet est distribué sous licence BSD-3-Clause ; voir le fichier [LICENSE](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) pour les détails.
