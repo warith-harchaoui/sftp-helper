@@ -41,18 +41,28 @@ __all__ = [
     "remote_dir_exist",
     "make_remote_directory",
     "remote_tempfile",
+    "list_dir",
+    "list_dir_stat",
+    "remote_stat",
+    "upload_many",
+    "download_many",
 ]
 
 from .main import (
     credentials,
     delete,
     download,
+    download_many,
     get_client_sftp,
+    list_dir,
+    list_dir_stat,
     make_remote_directory,
     normalize_path,
     remote_dir_exist,
     remote_file_exists,
+    remote_stat,
     remote_tempfile,
     strip_sftp_path,
     upload,
+    upload_many,
 )

@@ -36,6 +36,7 @@ EXPECTED_SUBCOMMANDS = {
     "delete",
     "exists",
     "dir-exists",
+    "list",
     "mkdir",
     "normalize-path",
     "strip-path",

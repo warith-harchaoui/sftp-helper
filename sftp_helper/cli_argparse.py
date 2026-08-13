@@ -55,6 +55,7 @@ from . import (
     credentials,
     delete,
     download,
+    list_dir,
     make_remote_directory,
     normalize_path,
     remote_dir_exist,
@@ -226,6 +227,25 @@ def _handle_dir_exists(ns: argparse.Namespace) -> int:
         return 0
     print("false")
     return 1
+
+
+def _handle_list(ns: argparse.Namespace) -> int:
+    """Handle ``list``: print a remote directory's entries, one per line.
+
+    Parameters
+    ----------
+    ns : argparse.Namespace
+        Parsed args (``config``, ``remote``, ``recursive``).
+
+    Returns
+    -------
+    int
+        ``0`` on success.
+    """
+    cred = _load_cred(ns.config)
+    for entry in list_dir(ns.remote, cred, recursive=ns.recursive):
+        print(entry)
+    return 0
 
 
 def _handle_mkdir(ns: argparse.Namespace) -> int:
@@ -408,6 +428,15 @@ def _add_dir_exists(sub: argparse._SubParsersAction) -> None:
     p.set_defaults(func=_handle_dir_exists)
 
 
+def _add_list(sub: argparse._SubParsersAction) -> None:
+    """Register the ``list`` subcommand and its flags on ``sub``."""
+    p = sub.add_parser("list", help="List a remote directory's entries, one per line.")
+    _add_common_config(p)
+    p.add_argument("--remote", required=True, help="Remote directory path.")
+    p.add_argument("--recursive", action="store_true", help="Walk sub-directories too (paths relative to --remote).")
+    p.set_defaults(func=_handle_list)
+
+
 def _add_mkdir(sub: argparse._SubParsersAction) -> None:
     """Register the ``mkdir`` subcommand and its flags on ``sub``."""
     p = sub.add_parser("mkdir", help="Create a remote directory (mkdir -p semantics).")
@@ -497,6 +526,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_delete(subparsers)
     _add_exists(subparsers)
     _add_dir_exists(subparsers)
+    _add_list(subparsers)
     _add_mkdir(subparsers)
     _add_normalize_path(subparsers)
     _add_strip_path(subparsers)

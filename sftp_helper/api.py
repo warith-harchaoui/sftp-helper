@@ -66,6 +66,7 @@ from . import (
     credentials,
     delete,
     download,
+    list_dir,
     make_remote_directory,
     normalize_path,
     remote_dir_exist,
@@ -322,6 +323,16 @@ def dir_exists_endpoint(
     """Return whether a remote directory exists."""
     cred = _cred_or_503()
     return JSONResponse({"exists": bool(remote_dir_exist(remote, cred)), "remote": remote})
+
+
+@app.get("/list", tags=["reads"])
+def list_endpoint(
+    remote: str = Query(..., description="Remote directory path."),
+    recursive: bool = Query(False, description="Walk sub-directories too (paths relative to remote)."),
+) -> JSONResponse:
+    """List a remote directory's entries."""
+    cred = _cred_or_503()
+    return JSONResponse({"entries": list_dir(remote, cred, recursive=recursive), "remote": remote})
 
 
 # ---------------------------------------------------------------------------

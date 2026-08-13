@@ -47,6 +47,7 @@ from . import (
     credentials,
     delete,
     download,
+    list_dir,
     make_remote_directory,
     normalize_path,
     remote_dir_exist,
@@ -222,6 +223,28 @@ def dir_exists(config_: str | None, remote: str) -> None:
     else:
         click.echo("false")
         sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# list
+# ---------------------------------------------------------------------------
+
+
+@cli.command(name="list")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option("--remote", required=True, type=str, help="Remote directory path.")
+@click.option("--recursive", is_flag=True, default=False, help="Walk sub-directories too (paths relative to --remote).")
+def list_cmd(config_: str | None, remote: str, recursive: bool) -> None:
+    """List a remote directory's entries, one per line."""
+    cred = credentials(config_)
+    for entry in list_dir(remote, cred, recursive=recursive):
+        click.echo(entry)
 
 
 # ---------------------------------------------------------------------------
