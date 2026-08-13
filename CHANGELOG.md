@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-13
+
+### Added
+
+- **Bulk/folder transfers**: `upload()`/`download()` now handle a directory
+  transparently — every file underneath goes through the new
+  `upload_many`/`download_many`, which zip-and-ship as a single archive (one
+  `put`/`get` plus one remote `unzip`/`zip`) whenever the server accepts exec,
+  falling back to the per-file path automatically otherwise.
+- **`overwrite`/`resume`/`progress` knobs** on `upload()`/`download()` (CLI:
+  `--no-overwrite`/`--no-resume`/`--no-progress`; API: `overwrite` on
+  `/upload`), mirroring `os_helper.download_file`'s design — `overwrite=False`
+  turns a repeat call into an incremental sync.
+- **`list_dir`/`list_dir_stat`/`remote_stat`**: read-side building blocks for
+  the above. `list_dir` (optionally `recursive`) and `remote_stat` (size +
+  mtime for one file) ship with full CLI (`list`, `remote-stat`) and API
+  (`GET /list`, `GET /remote-stat`) surfaces; `list_dir_stat` and the
+  `upload_many`/`download_many` batch primitives (arbitrary `(local, remote)`
+  pairs, not just one directory tree) are library-only for now — the primary
+  directory-transfer use case is already covered end-to-end by `upload`/
+  `download`.
+
 ## [3.1.0] - 2026-08-08
 
 ### Added

@@ -52,6 +52,7 @@ from . import (
     normalize_path,
     remote_dir_exist,
     remote_file_exists,
+    remote_stat,
     remote_tempfile,
     strip_sftp_path,
     upload,
@@ -115,13 +116,54 @@ def cli() -> None:
     help="Path to a JSON/YAML config file or dir.",
 )
 @click.option(
-    "--input", "input_", required=True, type=click.Path(exists=True), help="Local file path."
+    "--input",
+    "input_",
+    required=True,
+    type=click.Path(exists=True),
+    help="Local file or directory path.",
 )
 @click.option("--remote", default=None, type=str, help="Full sftp:// address or plain remote path.")
-def upload_cmd(config_: str | None, input_: str, remote: str | None) -> None:
-    """Upload a local file to the SFTP server."""
+@click.option(
+    "--no-overwrite",
+    "no_overwrite",
+    is_flag=True,
+    default=False,
+    help="Skip destinations already present with a matching size (incremental sync).",
+)
+@click.option(
+    "--no-resume",
+    "no_resume",
+    is_flag=True,
+    default=False,
+    help="Discard any stale partial transfer instead of resuming it.",
+)
+@click.option(
+    "--no-progress",
+    "no_progress",
+    is_flag=True,
+    default=False,
+    help="Suppress the progress bar.",
+)
+def upload_cmd(
+    config_: str | None,
+    input_: str,
+    remote: str | None,
+    no_overwrite: bool,
+    no_resume: bool,
+    no_progress: bool,
+) -> None:
+    """Upload a local file or directory to the SFTP server."""
     cred = credentials(config_)
-    click.echo(upload(input_, cred, remote or ""))
+    click.echo(
+        upload(
+            input_,
+            cred,
+            remote or "",
+            overwrite=not no_overwrite,
+            resume=not no_resume,
+            progress=not no_progress,
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -146,10 +188,47 @@ def upload_cmd(config_: str | None, input_: str, remote: str | None) -> None:
     type=click.Path(),
     help="Local output path (defaults to remote basename).",
 )
-def download_cmd(config_: str | None, remote: str, output: str | None) -> None:
-    """Download a remote file to the local disk."""
+@click.option(
+    "--no-overwrite",
+    "no_overwrite",
+    is_flag=True,
+    default=False,
+    help="Skip destinations already present with a matching size (incremental sync).",
+)
+@click.option(
+    "--no-resume",
+    "no_resume",
+    is_flag=True,
+    default=False,
+    help="Discard any stale partial transfer instead of resuming it.",
+)
+@click.option(
+    "--no-progress",
+    "no_progress",
+    is_flag=True,
+    default=False,
+    help="Suppress the progress bar.",
+)
+def download_cmd(
+    config_: str | None,
+    remote: str,
+    output: str | None,
+    no_overwrite: bool,
+    no_resume: bool,
+    no_progress: bool,
+) -> None:
+    """Download a remote file or directory to the local disk."""
     cred = credentials(config_)
-    click.echo(download(remote, cred, output or ""))
+    click.echo(
+        download(
+            remote,
+            cred,
+            output or "",
+            overwrite=not no_overwrite,
+            resume=not no_resume,
+            progress=not no_progress,
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -239,12 +318,43 @@ def dir_exists(config_: str | None, remote: str) -> None:
     help="Path to a JSON/YAML config file or dir.",
 )
 @click.option("--remote", required=True, type=str, help="Remote directory path.")
-@click.option("--recursive", is_flag=True, default=False, help="Walk sub-directories too (paths relative to --remote).")
+@click.option(
+    "--recursive",
+    is_flag=True,
+    default=False,
+    help="Walk sub-directories too (paths relative to --remote).",
+)
 def list_cmd(config_: str | None, remote: str, recursive: bool) -> None:
     """List a remote directory's entries, one per line."""
     cred = credentials(config_)
     for entry in list_dir(remote, cred, recursive=recursive):
         click.echo(entry)
+
+
+# ---------------------------------------------------------------------------
+# remote-stat
+# ---------------------------------------------------------------------------
+
+
+@cli.command(name="remote-stat")
+@click.option(
+    "--config",
+    "config_",
+    default=None,
+    type=click.Path(),
+    help="Path to a JSON/YAML config file or dir.",
+)
+@click.option(
+    "--remote", required=True, type=str, help="Full sftp:// address or plain remote path."
+)
+def remote_stat_cmd(config_: str | None, remote: str) -> None:
+    """Print a remote file's size/mtime as JSON (exit 1 if missing)."""
+    cred = credentials(config_)
+    info = remote_stat(remote, cred)
+    if info is None:
+        click.echo("null")
+        sys.exit(1)
+    click.echo(json.dumps({"size": info["size"], "mtime": info["mtime"].isoformat()}, indent=2))
 
 
 # ---------------------------------------------------------------------------

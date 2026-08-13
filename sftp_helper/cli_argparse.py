@@ -60,6 +60,7 @@ from . import (
     normalize_path,
     remote_dir_exist,
     remote_file_exists,
+    remote_stat,
     remote_tempfile,
     strip_sftp_path,
     upload,
@@ -124,12 +125,13 @@ def _mask(cred: dict) -> dict:
 
 
 def _handle_upload(ns: argparse.Namespace) -> int:
-    """Handle ``upload``: send a local file, print its remote address.
+    """Handle ``upload``: send a local file (or directory), print its remote address.
 
     Parameters
     ----------
     ns : argparse.Namespace
-        Parsed args (``config``, ``input``, ``remote``).
+        Parsed args (``config``, ``input``, ``remote``, ``no_overwrite``,
+        ``no_resume``, ``no_progress``).
 
     Returns
     -------
@@ -137,20 +139,29 @@ def _handle_upload(ns: argparse.Namespace) -> int:
         ``0`` on success.
     """
     # upload() returns the ``sftp://`` (or plain remote) address of the
-    # uploaded file. Emit it so shell pipelines can chain on stdout.
+    # uploaded file. Emit it so shell pipelines can chain on stdout. A
+    # directory input transparently uses the archive-accelerated bulk path.
     cred = _load_cred(ns.config)
-    addr = upload(ns.input, cred, ns.remote or "")
+    addr = upload(
+        ns.input,
+        cred,
+        ns.remote or "",
+        overwrite=not ns.no_overwrite,
+        resume=not ns.no_resume,
+        progress=not ns.no_progress,
+    )
     print(addr)
     return 0
 
 
 def _handle_download(ns: argparse.Namespace) -> int:
-    """Handle ``download``: fetch a remote file, print the local path.
+    """Handle ``download``: fetch a remote file (or directory), print the local path.
 
     Parameters
     ----------
     ns : argparse.Namespace
-        Parsed args (``config``, ``remote``, ``output``).
+        Parsed args (``config``, ``remote``, ``output``, ``no_overwrite``,
+        ``no_resume``, ``no_progress``).
 
     Returns
     -------
@@ -159,7 +170,14 @@ def _handle_download(ns: argparse.Namespace) -> int:
     """
     # download() returns the local path (falls back to the remote basename).
     cred = _load_cred(ns.config)
-    local = download(ns.remote, cred, ns.output or "")
+    local = download(
+        ns.remote,
+        cred,
+        ns.output or "",
+        overwrite=not ns.no_overwrite,
+        resume=not ns.no_resume,
+        progress=not ns.no_progress,
+    )
     print(local)
     return 0
 
@@ -245,6 +263,29 @@ def _handle_list(ns: argparse.Namespace) -> int:
     cred = _load_cred(ns.config)
     for entry in list_dir(ns.remote, cred, recursive=ns.recursive):
         print(entry)
+    return 0
+
+
+def _handle_remote_stat(ns: argparse.Namespace) -> int:
+    """Handle ``remote-stat``: print a remote file's size/mtime as JSON.
+
+    Parameters
+    ----------
+    ns : argparse.Namespace
+        Parsed args (``config``, ``remote``).
+
+    Returns
+    -------
+    int
+        ``0`` if the file exists, ``1`` if missing (``test -e`` convention,
+        matching ``exists``/``dir-exists``).
+    """
+    cred = _load_cred(ns.config)
+    info = remote_stat(ns.remote, cred)
+    if info is None:
+        print("null")
+        return 1
+    print(json.dumps({"size": info["size"], "mtime": info["mtime"].isoformat()}, indent=2))
     return 0
 
 
@@ -379,25 +420,68 @@ def _add_common_config(p: argparse.ArgumentParser) -> None:
 
 def _add_upload(sub: argparse._SubParsersAction) -> None:
     """Register the ``upload`` subcommand and its flags on ``sub``."""
-    p = sub.add_parser("upload", help="Upload a local file to the SFTP server.")
+    p = sub.add_parser("upload", help="Upload a local file or directory to the SFTP server.")
     _add_common_config(p)
-    p.add_argument("--input", required=True, help="Local file path.")
+    p.add_argument("--input", required=True, help="Local file or directory path.")
     p.add_argument(
         "--remote",
         default=None,
         help="Full sftp:// address (or plain remote path). If omitted, a "
-        "content-hashed name under sftp_destination_path is used.",
+        "content-hashed name under sftp_destination_path is used (single "
+        "file only — required when --input is a directory).",
+    )
+    p.add_argument(
+        "--no-overwrite",
+        action="store_true",
+        default=False,
+        dest="no_overwrite",
+        help="Skip destinations already present with a matching size (incremental sync).",
+    )
+    p.add_argument(
+        "--no-resume",
+        action="store_true",
+        default=False,
+        dest="no_resume",
+        help="Discard any stale partial transfer instead of resuming it.",
+    )
+    p.add_argument(
+        "--no-progress",
+        action="store_true",
+        default=False,
+        dest="no_progress",
+        help="Suppress the progress bar.",
     )
     p.set_defaults(func=_handle_upload)
 
 
 def _add_download(sub: argparse._SubParsersAction) -> None:
     """Register the ``download`` subcommand and its flags on ``sub``."""
-    p = sub.add_parser("download", help="Download a remote file to the local disk.")
+    p = sub.add_parser("download", help="Download a remote file or directory to the local disk.")
     _add_common_config(p)
     p.add_argument("--remote", required=True, help="Full sftp:// address or plain remote path.")
     p.add_argument(
         "--output", default=None, help="Local output path (defaults to remote basename)."
+    )
+    p.add_argument(
+        "--no-overwrite",
+        action="store_true",
+        default=False,
+        dest="no_overwrite",
+        help="Skip destinations already present with a matching size (incremental sync).",
+    )
+    p.add_argument(
+        "--no-resume",
+        action="store_true",
+        default=False,
+        dest="no_resume",
+        help="Discard any stale partial transfer instead of resuming it.",
+    )
+    p.add_argument(
+        "--no-progress",
+        action="store_true",
+        default=False,
+        dest="no_progress",
+        help="Suppress the progress bar.",
     )
     p.set_defaults(func=_handle_download)
 
@@ -433,8 +517,20 @@ def _add_list(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("list", help="List a remote directory's entries, one per line.")
     _add_common_config(p)
     p.add_argument("--remote", required=True, help="Remote directory path.")
-    p.add_argument("--recursive", action="store_true", help="Walk sub-directories too (paths relative to --remote).")
+    p.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Walk sub-directories too (paths relative to --remote).",
+    )
     p.set_defaults(func=_handle_list)
+
+
+def _add_remote_stat(sub: argparse._SubParsersAction) -> None:
+    """Register the ``remote-stat`` subcommand and its flags on ``sub``."""
+    p = sub.add_parser("remote-stat", help="Print a remote file's size/mtime as JSON.")
+    _add_common_config(p)
+    p.add_argument("--remote", required=True, help="Full sftp:// address or plain remote path.")
+    p.set_defaults(func=_handle_remote_stat)
 
 
 def _add_mkdir(sub: argparse._SubParsersAction) -> None:
@@ -527,6 +623,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_exists(subparsers)
     _add_dir_exists(subparsers)
     _add_list(subparsers)
+    _add_remote_stat(subparsers)
     _add_mkdir(subparsers)
     _add_normalize_path(subparsers)
     _add_strip_path(subparsers)

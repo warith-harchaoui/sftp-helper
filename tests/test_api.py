@@ -54,6 +54,8 @@ def test_openapi_lists_expected_endpoints(client):
         "/strip-path",
         "/exists",
         "/dir-exists",
+        "/list",
+        "/remote-stat",
         "/upload",
         "/download",
         "/delete",
@@ -75,3 +77,25 @@ def test_normalize_path_endpoint_is_pure(client):
     r = client.get("/normalize-path", params={"path": "foo/bar///"})
     assert r.status_code == 200
     assert r.json() == {"path": "/foo/bar"}
+
+
+def test_upload_route_exposes_overwrite_param(client):
+    """``/upload`` request-body schema exposes ``overwrite`` (default True)."""
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    schema = r.json()
+    body_schema_ref = schema["paths"]["/upload"]["post"]["requestBody"]["content"][
+        "multipart/form-data"
+    ]["schema"]["$ref"]
+    body_schema_name = body_schema_ref.rsplit("/", 1)[-1]
+    props = schema["components"]["schemas"][body_schema_name]["properties"]
+    assert props["overwrite"]["default"] is True
+
+
+def test_remote_stat_route_listed_in_reads(client):
+    """``/remote-stat`` is a GET route taking a required ``remote`` query param."""
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    op = r.json()["paths"]["/remote-stat"]["get"]
+    params = {p["name"]: p for p in op["parameters"]}
+    assert params["remote"]["required"] is True

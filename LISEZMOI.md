@@ -34,17 +34,27 @@ média depuis une URL utilisez `youtube-helper`.
 
 ## Fonctionnalités
 
-- **Upload** d'un fichier local vers le serveur. Donnez une adresse
-  `sftp://host/path` explicite ou omettez-la pour obtenir un nom **haché sur le
-  contenu** sous `sftp_destination_path` (des octets identiques se dédupliquent
-  vers le même chemin). Barre de progression (mise à l'échelle en octets) pour
-  les gros transferts et préservation de la date de modification (mtime).
-- **Download** d'un fichier distant vers le disque (par défaut le nom de base
-  distant), avec barre de progression et préservation du mtime distant.
+- **Upload** d'un fichier local **ou d'un répertoire** vers le serveur. Donnez
+  une adresse `sftp://host/path` explicite ou omettez-la (fichier seul) pour
+  obtenir un nom **haché sur le contenu** sous `sftp_destination_path` (des
+  octets identiques se dédupliquent vers le même chemin). Un répertoire passe
+  par `upload_many`, qui zippe puis expédie en une seule archive (un `put` +
+  un `unzip` distant) dès que le serveur accepte l'exécution, au lieu d'un
+  aller-retour par fichier. Options `overwrite`/`resume`/`progress` : ignorer
+  les destinations déjà présentes avec la même taille (synchronisation
+  incrémentale), abandonner un transfert partiel périmé, ou masquer la barre
+  de progression.
+- **Download** d'un fichier **ou d'un répertoire** distant vers le disque (par
+  défaut le nom de base distant pour un fichier seul), accéléré par archive de
+  la même façon via `download_many`, avec les mêmes options `overwrite`/
+  `resume`/`progress`.
 - **Delete** d'un fichier distant, **idempotent** : supprimer un fichier absent
   réussit.
 - **Vérifications d'existence** pour un **fichier** distant (`remote_file_exists`)
   et un **répertoire** distant (`remote_dir_exist`).
+- **Lister un répertoire distant** (`list_dir`, `recursive` en option) ou
+  lister avec taille/mtime par entrée en un seul passage (`list_dir_stat`) ;
+  **stat d'un seul fichier distant** (`remote_stat`).
 - **Création de répertoires distants** avec la sémantique `mkdir -p`
   (`make_remote_directory`) : chaque niveau intermédiaire manquant est créé.
 - **Helpers de chemin** : `normalize_path` (un seul `/` initial, pas de `/` final)
@@ -252,10 +262,13 @@ exposées comme CLI, comme surface HTTP FastAPI et comme outils MCP :
 import sftp_helper as sftph
 
 # CLI argparse (installé automatiquement)
-sftp-helper upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
-sftp-helper download --config settings.yaml --remote /uploads/local.txt --output out.txt
-sftp-helper exists   --config settings.yaml --remote /uploads/local.txt
-sftp-helper mkdir    --config settings.yaml --remote /uploads/a/b/c
+sftp-helper upload      --config settings.yaml --input local.txt --remote /uploads/local.txt
+sftp-helper upload      --config settings.yaml --input ./local_dir --remote /uploads/dir
+sftp-helper download    --config settings.yaml --remote /uploads/local.txt --output out.txt
+sftp-helper exists      --config settings.yaml --remote /uploads/local.txt
+sftp-helper list        --config settings.yaml --remote /uploads --recursive
+sftp-helper remote-stat --config settings.yaml --remote /uploads/local.txt
+sftp-helper mkdir       --config settings.yaml --remote /uploads/a/b/c
 
 # Jumeau CLI en click (extra [cli] nécessaire)
 pip install "sftp-helper[cli]"

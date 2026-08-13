@@ -13,11 +13,13 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 
 | Intent | CLI | Library | API |
 |--------|-----|---------|-----------|
-| Upload a local file | `sftp-helper upload` | `upload` | `POST /upload` |
-| Download a remote file | `sftp-helper download` | `download` | `GET /download` |
+| Upload a local file or directory | `sftp-helper upload` | `upload` (dirs → `upload_many`, archive-accelerated) | `POST /upload` |
+| Download a remote file or directory | `sftp-helper download` | `download` (dirs → `download_many`, archive-accelerated) | `GET /download` |
 | Delete a remote file (idempotent) | `sftp-helper delete` | `delete` | `DELETE /delete` |
 | Does a remote file exist | `sftp-helper exists` | `remote_file_exists` | `GET /exists` |
 | Does a remote directory exist | `sftp-helper dir-exists` | `remote_dir_exist` | `GET /dir-exists` |
+| List a remote directory's entries | `sftp-helper list` | `list_dir` (`list_dir_stat` for size/mtime per entry) | `GET /list` |
+| Stat one remote file (size/mtime) | `sftp-helper remote-stat` | `remote_stat` | `GET /remote-stat` |
 | Create a remote dir (`mkdir -p`) | `sftp-helper mkdir` | `make_remote_directory` | `POST /mkdir` |
 | Normalize a remote path | `sftp-helper normalize-path` | `normalize_path` | `GET /normalize-path` |
 | Strip `sftp://host` from an address | `sftp-helper strip-path` | `strip_sftp_path` | `GET /strip-path` |
@@ -26,6 +28,15 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 
 Every operation is also reachable through the click CLI (`sftp-helper-click …`,
 same flags).
+
+`upload`/`download` handle a directory transparently: every file underneath is
+sent in one `upload_many`/`download_many` batch, which zips-and-ships as a
+single archive (one `put`/`get` plus one remote `unzip`/`zip`) whenever the
+server accepts exec, instead of one round trip per file. `upload_many` and
+`download_many` are also public library functions in their own right, for
+scattered `(local, remote)` pairs that don't share one directory tree — no
+dedicated CLI/API surface for that shape yet, since the primary directory
+use case is already covered end-to-end by `upload`/`download`.
 
 ## Natural-language phrasings that should fire
 
@@ -36,6 +47,10 @@ same flags).
 - **Delete**: "delete / remove / rm this remote file", "purge that stale upload".
 - **Exists**: "does this file exist on the server", "is /path there remotely",
   "check the remote directory".
+- **List / remote-stat**: "list the remote directory", "what's in /uploads on
+  the server", "how big is that remote file", "when was it last modified".
+- **Upload/download a folder**: "sync this whole folder to the server",
+  "upload every file under X", "download the entire remote directory".
 - **Mkdir**: "create the remote directory /a/b/c", "mkdir -p on the remote".
 - **Paths**: "normalize this remote path", "strip the sftp:// / host prefix".
 - **Temp / stage-and-share**: "reserve a temp path that deletes itself", "stage a

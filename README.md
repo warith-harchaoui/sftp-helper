@@ -33,15 +33,24 @@ downloading media from a URL use `youtube-helper`.
 
 ## Features
 
-- **Upload** a local file to the server. Pass an explicit `sftp://host/path`, or
-  omit it to get a deterministic **content-hashed** name under
-  `sftp_destination_path` (identical bytes de-duplicate to the same path). Shows
-  a byte-scaled progress bar on large transfers and preserves the source mtime.
-- **Download** a remote file to disk (defaults to the remote basename), with a
-  progress bar and remote-mtime preservation.
+- **Upload** a local file **or directory** to the server. Pass an explicit
+  `sftp://host/path`, or omit it (single file only) to get a deterministic
+  **content-hashed** name under `sftp_destination_path` (identical bytes
+  de-duplicate to the same path). A directory is sent via `upload_many`,
+  which zips-and-ships as one archive (one `put` + one remote `unzip`)
+  whenever the server accepts exec, instead of one round trip per file.
+  `overwrite`/`resume`/`progress` knobs: skip destinations already present
+  with a matching size (incremental sync), discard a stale partial transfer,
+  or suppress the progress bar.
+- **Download** a remote file **or directory** to disk (defaults to the remote
+  basename for a single file), archive-accelerated the same way via
+  `download_many`, with the same `overwrite`/`resume`/`progress` knobs.
 - **Delete** a remote file, **idempotent**: removing an absent file succeeds.
 - **Existence checks** for a remote **file** (`remote_file_exists`) and a remote
   **directory** (`remote_dir_exist`).
+- **List a remote directory** (`list_dir`, optionally `recursive`) or list with
+  per-entry size/mtime in one pass (`list_dir_stat`); **stat a single remote
+  file** (`remote_stat`).
 - **Create remote directories** with `mkdir -p` semantics
   (`make_remote_directory`): every missing intermediate level is created.
 - **Path helpers**: `normalize_path` (single leading `/`, no trailing `/`) and
@@ -253,10 +262,13 @@ as a CLI, a FastAPI HTTP surface, and MCP tools:
 import sftp_helper as sftph
 
 # argparse-based CLI (installed automatically)
-sftp-helper upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
-sftp-helper download --config settings.yaml --remote /uploads/local.txt --output out.txt
-sftp-helper exists   --config settings.yaml --remote /uploads/local.txt
-sftp-helper mkdir    --config settings.yaml --remote /uploads/a/b/c
+sftp-helper upload      --config settings.yaml --input local.txt --remote /uploads/local.txt
+sftp-helper upload      --config settings.yaml --input ./local_dir --remote /uploads/dir
+sftp-helper download    --config settings.yaml --remote /uploads/local.txt --output out.txt
+sftp-helper exists      --config settings.yaml --remote /uploads/local.txt
+sftp-helper list        --config settings.yaml --remote /uploads --recursive
+sftp-helper remote-stat --config settings.yaml --remote /uploads/local.txt
+sftp-helper mkdir       --config settings.yaml --remote /uploads/a/b/c
 
 # click-based CLI twin (needs the [cli] extra)
 pip install "sftp-helper[cli]"

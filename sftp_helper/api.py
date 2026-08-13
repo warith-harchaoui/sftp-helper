@@ -71,6 +71,7 @@ from . import (
     normalize_path,
     remote_dir_exist,
     remote_file_exists,
+    remote_stat,
     remote_tempfile,
     strip_sftp_path,
     upload,
@@ -328,11 +329,27 @@ def dir_exists_endpoint(
 @app.get("/list", tags=["reads"])
 def list_endpoint(
     remote: str = Query(..., description="Remote directory path."),
-    recursive: bool = Query(False, description="Walk sub-directories too (paths relative to remote)."),
+    recursive: bool = Query(
+        False, description="Walk sub-directories too (paths relative to remote)."
+    ),
 ) -> JSONResponse:
     """List a remote directory's entries."""
     cred = _cred_or_503()
     return JSONResponse({"entries": list_dir(remote, cred, recursive=recursive), "remote": remote})
+
+
+@app.get("/remote-stat", tags=["reads"])
+def remote_stat_endpoint(
+    remote: str = Query(..., description="Full sftp:// address or plain remote path."),
+) -> JSONResponse:
+    """Stat a remote file: size + mtime. Returns ``{"exists": false}`` if missing."""
+    cred = _cred_or_503()
+    info = remote_stat(remote, cred)
+    if info is None:
+        return JSONResponse({"exists": False, "remote": remote})
+    return JSONResponse(
+        {"exists": True, "remote": remote, "size": info["size"], "mtime": info["mtime"].isoformat()}
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -347,13 +364,16 @@ def upload_endpoint(
     remote: str = Form(
         "", description="Full sftp:// address or plain remote path (auto if empty)."
     ),
+    overwrite: bool = Form(
+        True, description="Re-upload even if the destination already matches in size."
+    ),
 ) -> JSONResponse:
     """Upload the multipart file to the SFTP server. Returns the remote address."""
     cred = _cred_or_503()
     tmp = _new_tmpdir()
     src = _spool(file, tmp, suffix_hint=Path(file.filename or "").suffix)
     try:
-        addr = upload(str(src), cred, remote)
+        addr = upload(str(src), cred, remote, overwrite=overwrite)
     finally:
         # Clean synchronously here so a slow client cannot leave the temp
         # file lying around after the response has already returned.

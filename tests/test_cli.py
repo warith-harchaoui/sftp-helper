@@ -37,6 +37,7 @@ EXPECTED_SUBCOMMANDS = {
     "exists",
     "dir-exists",
     "list",
+    "remote-stat",
     "mkdir",
     "normalize-path",
     "strip-path",
@@ -87,6 +88,58 @@ def test_argparse_normalize_path_pure(capsys):
     assert rc == 0
     captured = capsys.readouterr()
     assert captured.out.strip() == "/foo/bar"
+
+
+def test_argparse_upload_overwrite_resume_progress_default_true():
+    """``upload``'s --no-overwrite/--no-resume/--no-progress default to False."""
+    from sftp_helper.cli_argparse import build_parser
+
+    ns = build_parser().parse_args(["upload", "--input", "in.mp4"])
+    assert ns.no_overwrite is False
+    assert ns.no_resume is False
+    assert ns.no_progress is False
+
+
+def test_argparse_upload_parses_no_overwrite_resume_progress_flags():
+    """``upload`` parses --no-overwrite/--no-resume/--no-progress when passed."""
+    from sftp_helper.cli_argparse import build_parser
+
+    ns = build_parser().parse_args(
+        ["upload", "--input", "in.mp4", "--no-overwrite", "--no-resume", "--no-progress"]
+    )
+    assert ns.no_overwrite is True
+    assert ns.no_resume is True
+    assert ns.no_progress is True
+
+
+def test_argparse_download_overwrite_resume_progress_default_true():
+    """``download``'s --no-overwrite/--no-resume/--no-progress default to False."""
+    from sftp_helper.cli_argparse import build_parser
+
+    ns = build_parser().parse_args(["download", "--remote", "/x/y.mp4"])
+    assert ns.no_overwrite is False
+    assert ns.no_resume is False
+    assert ns.no_progress is False
+
+
+def test_click_upload_overwrite_resume_progress_defaults():
+    """The click ``upload`` command's --no-* flags default to False."""
+    from sftp_helper.cli_click import upload_cmd
+
+    defaults = {p.name: p.default for p in upload_cmd.params}
+    assert defaults["no_overwrite"] is False
+    assert defaults["no_resume"] is False
+    assert defaults["no_progress"] is False
+
+
+def test_click_download_overwrite_resume_progress_defaults():
+    """The click ``download`` command's --no-* flags default to False."""
+    from sftp_helper.cli_click import download_cmd
+
+    defaults = {p.name: p.default for p in download_cmd.params}
+    assert defaults["no_overwrite"] is False
+    assert defaults["no_resume"] is False
+    assert defaults["no_progress"] is False
 
 
 # ---------------------------------------------------------------------------
