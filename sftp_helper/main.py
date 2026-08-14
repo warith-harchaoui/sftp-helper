@@ -117,6 +117,46 @@ _NOT_FOUND_MARKERS = (
     "Not a directory",
 )
 
+# Characters that must never reach an ``sftp -b`` batch command or a remote
+# ``ssh ... command`` string, because both are built by interpolating a path
+# into an ``f'... "{path}" ...'`` template rather than through a proper
+# argv-style API. A bare ``"`` breaks out of that quoting; ``\n``/``\r`` break
+# out of the batch file's one-command-per-line format entirely, letting a
+# crafted path smuggle in an extra sftp command (including ``!command``,
+# OpenSSH sftp's local-shell escape) on the next line; ``\x00`` cannot appear
+# in a real path at all and only ever signals a truncation attack.
+_UNSAFE_PATH_CHARS = ("\n", "\r", "\x00", '"')
+
+
+def _assert_safe_path(path: str, *, what: str) -> str:
+    """Reject a path that could break out of an ``sftp``/``ssh`` command string.
+
+    Parameters
+    ----------
+    path : str
+        A remote or local path about to be interpolated into a quoted
+        ``sftp -b`` batch command or a remote ``ssh`` exec string.
+    what : str
+        Short label for the error message (e.g. ``"remote path"``).
+
+    Returns
+    -------
+    str
+        ``path``, unchanged, once proven safe.
+
+    Raises
+    ------
+    ValueError
+        If `path` contains a newline, carriage return, NUL byte, or double
+        quote — see :data:`_UNSAFE_PATH_CHARS`.
+    """
+    if any(ch in path for ch in _UNSAFE_PATH_CHARS):
+        raise ValueError(
+            f"Unsafe {what} (contains a newline, NUL byte, or double quote, any "
+            f"of which could break out of an sftp/ssh command string): {path!r}"
+        )
+    return path
+
 
 # Only these three identify a reachable, addressable target: where to connect
 # (host), as whom (login), and which public URL a remote file maps to
@@ -754,6 +794,11 @@ def _upload_resumable(
         failure the temp remote file is left in place so a later call
         resumes rather than starts over.
     """
+    # ``remote_path`` arrives already validated (every caller resolves it via
+    # strip_sftp_path -> normalize_path first); ``local_path`` does not go
+    # through that funnel, and is what gets embedded in the ``put``/``reput``
+    # batch command below, so it needs the same guard here.
+    _assert_safe_path(local_path, what="local path")
     temp_remote = f"{remote_path}{_UPLOAD_TMP_SUFFIX}"
     local_size = os.path.getsize(local_path)
 
@@ -864,6 +909,10 @@ def _download_resumable(
         If every attempt fails. On total failure the ``.part`` sidecar is
         left in place so a later call resumes rather than starts over.
     """
+    # local_path gets embedded (as the ".part" sidecar) in the ``reget``
+    # batch command below — same guard as _upload_resumable's local_path,
+    # same reasoning.
+    _assert_safe_path(local_path, what="local path")
     part_path = local_path + ".part"
     if not resume and os.path.exists(part_path):
         os.remove(part_path)
@@ -970,7 +1019,18 @@ def normalize_path(path: str) -> str:
     --------
     >>> normalize_path("foo/bar///")
     '/foo/bar'
+
+    Raises
+    ------
+    ValueError
+        If `path` contains a newline, carriage return, NUL byte, or double
+        quote — see :func:`_assert_safe_path`. Every remote-path-accepting
+        function in this module funnels through here (directly or via
+        :func:`strip_sftp_path`), so this is the one choke point that keeps
+        such a path from ever reaching an ``sftp -b`` batch command or a
+        remote ``ssh`` exec string, where it could break out of the quoting.
     """
+    _assert_safe_path(path, what="remote path")
     # Guarantee an absolute-looking path so downstream string comparisons and
     # ``sftp://host`` stripping behave predictably.
     if not path.startswith("/"):
@@ -1880,7 +1940,14 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
                 # own context-manager exit, success or failure alike — no
                 # explicit rm here.
                 target_dir = dest_root or "/"
-                cmd = f'cd "{target_dir}" && unzip -o -q "{os.path.basename(remote_zip)}"'
+                # shlex.quote (POSIX shell quoting), not a hand-rolled f'"..."':
+                # this remote command runs through the target's actual shell,
+                # where a bare double-quoted "{...}" still lets $(...) / `...`
+                # command-substitution through — quoting must defeat that too.
+                cmd = (
+                    f"cd {shlex.quote(target_dir)} && "
+                    f"unzip -o -q {shlex.quote(os.path.basename(remote_zip))}"
+                )
                 res = _run_ssh_exec(cred, cmd)
                 if res["code"] != 0:
                     raise Exception(
@@ -2216,11 +2283,17 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
         parent_dirs = sorted(
             {arc.rsplit("/", 1)[0] for _addr, _local, arc in entries if "/" in arc}
         )
-        parts = [f'mkdir -p "{stage_dir}/{d}"' for d in parent_dirs]
-        parts += [f'cp -p "/{arc}" "{stage_dir}/{arc}"' for _addr, _local, arc in entries]
+        # shlex.quote, not a hand-rolled f'"..."': see the matching comment in
+        # _upload_many_archive — a bare double-quoted "{...}" still lets
+        # $(...) / `...` command-substitution through in the remote shell.
+        parts = [f"mkdir -p {shlex.quote(f'{stage_dir}/{d}')}" for d in parent_dirs]
+        parts += [
+            f"cp -p {shlex.quote('/' + arc)} {shlex.quote(f'{stage_dir}/{arc}')}"
+            for _addr, _local, arc in entries
+        ]
 
         with remote_tempfile(cred, ext="zip") as (remote_zip, _url):
-            parts.append(f'cd "{stage_dir}" && zip -rq "{remote_zip}" .')
+            parts.append(f"cd {shlex.quote(stage_dir)} && zip -rq {shlex.quote(remote_zip)} .")
             res = _run_ssh_exec(cred, " && ".join(parts))
             if res["code"] != 0:
                 raise Exception(
@@ -2433,7 +2506,7 @@ def _remote_scratch_dir(cred: dict) -> Iterator[str]:
     # Same 128-bit-random naming scheme as remote_tempfile, under the same
     # root, so two concurrent callers never collide.
     path = f"{cred['sftp_destination_path'].rstrip('/')}/{secrets.token_hex(16)}.tmp"
-    res = _run_ssh_exec(cred, f'mkdir -p "{path}"')
+    res = _run_ssh_exec(cred, f"mkdir -p {shlex.quote(path)}")
     if res["code"] != 0:
         raise Exception(f"Failed to create remote scratch directory {path}: {res['err'].strip()}")
     try:
@@ -2441,7 +2514,7 @@ def _remote_scratch_dir(cred: dict) -> Iterator[str]:
     finally:
         # Best-effort: a cleanup failure here must never mask whatever
         # exception (if any) is already propagating out of the with-block.
-        cleanup = _run_ssh_exec(cred, f'rm -rf "{path}"')
+        cleanup = _run_ssh_exec(cred, f"rm -rf {shlex.quote(path)}")
         if cleanup["code"] != 0:
             osh.warning(
                 f"Failed to remove remote scratch directory {path}: {cleanup['err'].strip()}"

@@ -43,6 +43,20 @@ def test_normalize_path():
         assert sftph.normalize_path(raw) == expected, raw
 
 
+def test_normalize_path_rejects_unsafe_characters():
+    # Every remote-path funnel (normalize_path, and strip_sftp_path which
+    # calls it) must reject characters that could break out of an sftp -b
+    # batch command's quoting: a bare '"' breaks the quoted argument, '\n'/
+    # '\r' inject an extra batch-file line (including OpenSSH sftp's local
+    # shell escape, "!command"), and '\x00' can't occur in a real path.
+    for unsafe in ('/foo"bar', "/foo\nbar", "/foo\rbar", "/foo\x00bar"):
+        with pytest.raises(ValueError):
+            sftph.normalize_path(unsafe)
+    cred = {"sftp_host": "example.com"}
+    with pytest.raises(ValueError):
+        sftph.strip_sftp_path("sftp://example.com/foo\nbar", cred)
+
+
 def test_strip_sftp_path():
     cred = {"sftp_host": "example.com"}
     assert sftph.strip_sftp_path("sftp://example.com/folder/file.txt", cred) == "/folder/file.txt"
@@ -771,7 +785,9 @@ def test_upload_many_archive_zips_uploads_and_unzips(cred, tmp_path, monkeypatch
     assert uploaded["remote"].startswith("/var/www/uploads/")
     assert uploaded["remote"].endswith(".zip")
     (cmd,) = exec_calls
-    assert 'cd "/var/www/uploads"' in cmd
+    # Built with shlex.quote, not hand-rolled double quotes (see main.py) — a
+    # plain path with no shell-special characters comes back unquoted.
+    assert "cd /var/www/uploads" in cmd
     assert "unzip -o -q" in cmd
     # remote_tempfile's own cleanup deletes the remote zip on success — no
     # explicit "rm -f" baked into the unzip command anymore.
