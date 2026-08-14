@@ -244,7 +244,7 @@ def _require_sftp_binary() -> None:
             pacman="sudo pacman -S openssh",
             brew="preinstalled on modern macOS; if missing, 'brew install openssh'",
             windows="Settings > Apps > Optional features > Add > 'OpenSSH Client' "
-                    "(or: Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0 in PowerShell as Administrator)",
+            "(or: Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0 in PowerShell as Administrator)",
         )
         raise Exception(f"The OpenSSH 'sftp' client was not found on PATH. {hint}")
 
@@ -288,9 +288,9 @@ def _password_prefix(cred: dict) -> tuple[list[str], dict[str, str], bool]:
             dnf="sudo dnf install sshpass",
             pacman="sudo pacman -S sshpass",
             brew="'brew install hudochenkov/sshpass/sshpass' (sshpass is not in "
-                 "Homebrew core; that third-party tap builds it from source)",
+            "Homebrew core; that third-party tap builds it from source)",
             windows="no native sshpass build exists — use WSL (same as the Linux "
-                    "commands above) or switch to SSH-key auth (see below)",
+            "commands above) or switch to SSH-key auth (see below)",
         )
         raise Exception(
             "sftp_passwd is set but the 'sshpass' helper is not installed.\n"
@@ -390,9 +390,12 @@ def _ssh_options(cred: dict, *, batch_mode: str) -> list[str]:
     # stat walk) reuses one connection throughout; it then closes itself
     # (no daemon left running indefinitely).
     opts += [
-        "-o", "ControlMaster=auto",
-        "-o", f"ControlPath={_control_path(cred)}",
-        "-o", f"ControlPersist={_CONTROL_PERSIST}",
+        "-o",
+        "ControlMaster=auto",
+        "-o",
+        f"ControlPath={_control_path(cred)}",
+        "-o",
+        f"ControlPersist={_CONTROL_PERSIST}",
     ]
 
     return opts
@@ -910,7 +913,9 @@ def _download_resumable(
         digest = _sha256_file(part_path)
         if digest != sha256.lower():
             os.remove(part_path)
-            raise ValueError(f"sha256 mismatch for {remote_path}: expected {sha256.lower()}, got {digest}")
+            raise ValueError(
+                f"sha256 mismatch for {remote_path}: expected {sha256.lower()}, got {digest}"
+            )
 
     os.replace(part_path, local_path)
     return {"bytes": os.path.getsize(local_path), "sha256": digest}
@@ -1850,7 +1855,7 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
                 f"{cred['sftp_destination_path']!r}; bulk archive upload requires "
                 "every target under one root."
             )
-        arcname = remote_path[len(dest_root):].lstrip("/")
+        arcname = remote_path[len(dest_root) :].lstrip("/")
         entries.append((local_path, sftp_address, arcname))
 
     # Stage a mirror tree (arcname-relative) so os_helper.zip_folder — which
@@ -1882,7 +1887,9 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
                         f"Remote unzip failed (exit {res['code']}): "
                         f"{res['err'].strip() or res['out'].strip()}"
                     )
-                osh.info(f"Bulk archive upload: {len(entries)} file(s) via {os.path.basename(remote_zip)}")
+                osh.info(
+                    f"Bulk archive upload: {len(entries)} file(s) via {os.path.basename(remote_zip)}"
+                )
 
     return {local_path: sftp_address for local_path, sftp_address, _arc in entries}
 
@@ -2056,7 +2063,9 @@ def download(
 
     if remote_dir_exist(sftp_address, cred):
         if sha256 is not None:
-            raise ValueError("sha256 is only meaningful for a single-file download, not a directory.")
+            raise ValueError(
+                "sha256 is only meaningful for a single-file download, not a directory."
+            )
         return _download_folder(
             sftp_address,
             cred,
@@ -2145,8 +2154,12 @@ def _download_folder(
         osh.warning(f"Download skipped: '{sftp_address}' has no files to download.")
         return local_path
 
-    files = [(f"{remote_root}/{rel}", os.path.join(local_path, *rel.split("/"))) for rel in rel_paths]
-    download_many(files, cred, retries=retries, overwrite=overwrite, resume=resume, progress=progress)
+    files = [
+        (f"{remote_root}/{rel}", os.path.join(local_path, *rel.split("/"))) for rel in rel_paths
+    ]
+    download_many(
+        files, cred, retries=retries, overwrite=overwrite, resume=resume, progress=progress
+    )
     osh.info(f"Download successful (folder): {sftp_address} -> {local_path} ({len(files)} file(s))")
     return local_path
 
@@ -2200,7 +2213,9 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
         # both sorted for a deterministic, readable command; cheap even for
         # a large batch since each is a plain shell built-in / coreutil, no
         # extra round trip per entry the way per-file mkdir/put would cost.
-        parent_dirs = sorted({arc.rsplit("/", 1)[0] for _addr, _local, arc in entries if "/" in arc})
+        parent_dirs = sorted(
+            {arc.rsplit("/", 1)[0] for _addr, _local, arc in entries if "/" in arc}
+        )
         parts = [f'mkdir -p "{stage_dir}/{d}"' for d in parent_dirs]
         parts += [f'cp -p "/{arc}" "{stage_dir}/{arc}"' for _addr, _local, arc in entries]
 
@@ -2225,7 +2240,9 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
                             osh.make_directory(parent)
                         osh.copyfile(os.path.join(extracted, arc), local_path)
 
-            osh.info(f"Bulk archive download: {len(entries)} file(s) via {os.path.basename(remote_zip)}")
+            osh.info(
+                f"Bulk archive download: {len(entries)} file(s) via {os.path.basename(remote_zip)}"
+            )
 
     return {sftp_address: local_path for sftp_address, local_path, _arc in entries}
 
@@ -2426,4 +2443,6 @@ def _remote_scratch_dir(cred: dict) -> Iterator[str]:
         # exception (if any) is already propagating out of the with-block.
         cleanup = _run_ssh_exec(cred, f'rm -rf "{path}"')
         if cleanup["code"] != 0:
-            osh.warning(f"Failed to remove remote scratch directory {path}: {cleanup['err'].strip()}")
+            osh.warning(
+                f"Failed to remove remote scratch directory {path}: {cleanup['err'].strip()}"
+            )
