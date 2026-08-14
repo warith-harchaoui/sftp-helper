@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Path-injection guard**: `normalize_path()` (and therefore every
+  remote-path-accepting function) and the two resumable-transfer local-path
+  entry points now reject a path containing a newline, carriage return, NUL
+  byte, or double quote — any of which could previously break out of an
+  `sftp -b` batch command's quoting, including injecting an extra batch line
+  (e.g. OpenSSH sftp's `!command` local-shell escape). Reachable via any
+  caller-supplied `remote`/`local_path` on the HTTP API (e.g. `/exists`,
+  `/download`) or an uploaded file's client-supplied filename.
+- The remote `ssh`-exec shell commands built by the archive-accelerated bulk
+  upload/download path (`_upload_many_archive`, `_download_many_archive`,
+  `_remote_scratch_dir`) now use `shlex.quote()` instead of hand-rolled
+  `f'"..."'` interpolation — a bare double-quoted path still lets
+  `$(...)`/backtick command substitution through in a POSIX shell.
+
+### Fixed
+
+- **CLI**: an exception from the library (e.g. a connection failure, or the
+  new path-injection guard above) now prints one clean `Error: ...` line to
+  stderr and exits 1, instead of a raw Python traceback, on both CLI twins.
+  `sftp-helper-click`'s console-script entry point now points at a new
+  `cli_click.main()` wrapper (was `cli` directly) to make this possible.
+- **API**: a library `ValueError` (malformed input) now maps to HTTP 400, and
+  any other library exception (an SFTP-side failure: connection, auth, a
+  missing remote path) maps to 502 — previously both collapsed into FastAPI's
+  generic 500, indistinguishable from an actual server bug. Deliberate
+  `HTTPException`s (e.g. `_cred_or_503`'s 503) keep their own status code.
+
 ## [3.2.0] - 2026-08-13
 
 ### Added
