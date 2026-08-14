@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 
 # Import the pure functions once here — every subcommand is a thin dispatch
@@ -651,7 +652,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     # Every subparser sets ``func`` via ``set_defaults`` — no dispatch table
     # needed, argparse resolved it for us.
-    return int(args.func(args))
+    try:
+        return int(args.func(args))
+    except Exception as err:  # noqa: BLE001 — last resort: a clean one-line
+        # message instead of a raw traceback. argparse's own SystemExit
+        # (bad flags, --help) is a BaseException, not caught here, so it
+        # still propagates and exits with argparse's own code untouched.
+        print(f"Error: {err}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":  # pragma: no cover

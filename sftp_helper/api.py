@@ -54,7 +54,16 @@ import tempfile
 from pathlib import Path
 
 try:
-    from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Query, UploadFile
+    from fastapi import (
+        BackgroundTasks,
+        FastAPI,
+        File,
+        Form,
+        HTTPException,
+        Query,
+        Request,
+        UploadFile,
+    )
     from fastapi.responses import FileResponse, JSONResponse
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
@@ -147,6 +156,42 @@ def _load_server_cred() -> dict:
 # server restart, which matches operational reality (creds live in env /
 # mounted config file, both of which need a restart to change anyway).
 _SERVER_CRED: dict = _load_server_cred()
+
+
+# ---------------------------------------------------------------------------
+# Exception handlers
+#
+# The library layer (sftp_helper.main) raises plain ValueError (malformed
+# caller input: an unsafe path, a sha256 mismatch, an empty required field)
+# and plain Exception (an SFTP-side failure: connection refused, auth
+# failed, no such remote directory, ...). Without handlers here, both
+# collapse into FastAPI's default 500 — indistinguishable from a genuine
+# server bug, and unhelpful to a caller trying to tell "you sent something
+# invalid" apart from "the SFTP backend failed". Map the two: ValueError is
+# the caller's fault (400); everything else is the SFTP backend's fault, not
+# this server's own bug (502 Bad Gateway, matching the "we are a client to
+# your SFTP server" framing) — both keep the original message so the cause
+# is still visible in the response body.
+# ---------------------------------------------------------------------------
+
+
+@app.exception_handler(ValueError)
+def _value_error_handler(_request: Request, exc: ValueError) -> JSONResponse:
+    """Malformed caller input -> 400, instead of an opaque 500."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(Exception)
+def _sftp_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """An SFTP-side failure (connection, auth, missing path, ...) -> 502.
+
+    ``HTTPException`` is re-raised as-is: FastAPI already knows how to
+    render it (e.g. :func:`_cred_or_503`'s 503), and this handler would
+    otherwise flatten every deliberate status code to 502.
+    """
+    if isinstance(exc, HTTPException):
+        raise exc
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
 def _cred_or_503() -> dict:

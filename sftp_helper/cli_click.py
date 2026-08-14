@@ -453,5 +453,24 @@ def show_credentials(config_: str | None) -> None:
     click.echo(json.dumps(_mask(cred), indent=2))
 
 
+def main() -> None:
+    """Console entry point (``sftp-helper-click``).
+
+    Click's own ``main()`` only special-cases ``ClickException``/``Abort``
+    (and a broken pipe); a plain library exception (e.g. from ``upload()``)
+    would otherwise propagate as a raw Python traceback instead of a clean
+    CLI error. This wraps the whole invocation and translates that last
+    case into a one-line stderr message + exit 1 — click's own control flow
+    (usage errors, ``--help``, an explicit ``sys.exit(1)`` in a subcommand)
+    already raises ``SystemExit``, a ``BaseException`` this does not catch,
+    so it passes through untouched.
+    """
+    try:
+        cli()
+    except Exception as err:  # noqa: BLE001 — last resort: see docstring
+        click.echo(f"Error: {err}", err=True)
+        sys.exit(1)
+
+
 if __name__ == "__main__":  # pragma: no cover
-    cli()
+    main()

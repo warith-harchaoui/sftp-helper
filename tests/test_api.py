@@ -99,3 +99,19 @@ def test_remote_stat_route_listed_in_reads(client):
     op = r.json()["paths"]["/remote-stat"]["get"]
     params = {p["name"]: p for p in op["parameters"]}
     assert params["remote"]["required"] is True
+
+
+def test_value_error_maps_to_400_not_500(client):
+    """A library ValueError (e.g. an unsafe path) is a 400, not an opaque 500."""
+    r = client.get("/normalize-path", params={"path": "foo\nbar"})
+    assert r.status_code == 400
+    assert "detail" in r.json()
+
+
+def test_missing_credentials_maps_to_503_not_generic_500(client):
+    """``_cred_or_503``'s HTTPException(503) isn't swallowed by the generic
+    Exception handler — it must keep its own status code, not become a 502."""
+    r = client.get("/show-credentials")
+    # This test suite runs with no real SFTP target configured, so this is
+    # always the 503 branch (see conftest / module docstring).
+    assert r.status_code == 503

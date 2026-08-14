@@ -72,7 +72,7 @@ dev = [
 # argparse-based CLI — no runtime dep beyond stdlib + core package.
 sftp-helper = "sftp_helper.cli_argparse:main"
 # click-based twin — install with [cli] extra.
-sftp-helper-click = "sftp_helper.cli_click:cli"
+sftp-helper-click = "sftp_helper.cli_click:main"
 # HTTP API + MCP server — install with [mcp].
 sftp-helper-mcp = "sftp_helper.mcp:main"
 

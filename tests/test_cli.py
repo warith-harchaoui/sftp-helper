@@ -90,6 +90,19 @@ def test_argparse_normalize_path_pure(capsys):
     assert captured.out.strip() == "/foo/bar"
 
 
+def test_argparse_library_error_is_clean_not_a_traceback(capsys):
+    """A library exception (e.g. an unsafe path) prints one clean line and
+    exits 1 — not a raw Python traceback."""
+    from sftp_helper.cli_argparse import main
+
+    rc = main(["normalize-path", "--path", "foo\nbar"])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("Error: ")
+    assert "Traceback" not in captured.err
+
+
 def test_argparse_upload_overwrite_resume_progress_default_true():
     """``upload``'s --no-overwrite/--no-resume/--no-progress default to False."""
     from sftp_helper.cli_argparse import build_parser
@@ -182,3 +195,21 @@ def test_click_normalize_path_pure():
     result = runner.invoke(cli, ["normalize-path", "--path", "foo/bar///"])
     assert result.exit_code == 0
     assert result.output.strip() == "/foo/bar"
+
+
+def test_click_main_library_error_is_clean_not_a_traceback(monkeypatch, capsys):
+    """``main()`` (the ``sftp-helper-click`` entry point, not ``cli`` alone) turns
+    a library exception into one clean stderr line and exit 1 — not a raw
+    traceback. Exercises ``main()`` itself, since ``CliRunner`` has its own
+    separate exception handling that would not catch a regression here."""
+    import sys
+
+    from sftp_helper.cli_click import main
+
+    monkeypatch.setattr(sys, "argv", ["sftp-helper-click", "normalize-path", "--path", "foo\nbar"])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.err.startswith("Error: ")
+    assert "Traceback" not in captured.err
