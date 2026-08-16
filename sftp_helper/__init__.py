@@ -8,8 +8,8 @@ delete, mkdir -p, remote temp file with auto-cleanup) without knowing about
 the module layout.
 
 Backed by the system OpenSSH ``sftp`` client with strict host-key
-verification. See the module docs for the full policy — there is no flag to
-disable verification.
+verification, and there is no flag to disable it; see the module docs for
+the full policy.
 
 Usage Example
 -------------

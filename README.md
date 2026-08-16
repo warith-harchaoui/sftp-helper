@@ -6,6 +6,8 @@
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers`, built for developing Artificial Intelligence applications.
 
+SFTP, the SSH File Transfer Protocol, moves files to and from a remote server over the same encrypted channel used for a remote terminal login (SSH). The server never asks for a password if you would rather it did not: a key pair proves who you are, the same way a physical key proves you are allowed into a building, and the server only needs to know your key's public half. An AI pipeline that produces files (a rendered video, a trained model, a batch of transcripts) usually needs to hand them off to somewhere else without a human clicking through a file manager; `sftp-helper` is that hand-off, done from Python, with the file-integrity checks (resumable transfers, content hashing, atomic writes) that a script running unattended needs and a human with a mouse does not.
+
 This toolbox requires:
   - a `settings.yaml` for the sftp parameters (or JSON or environment variables or .env)
   - that you previously added you SSH key of your local machine in the SFTP server
@@ -246,11 +248,17 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 ## Host key verification
 
-`sftp_helper` never disables host key verification. Every `sftp` invocation
-passes `StrictHostKeyChecking=yes` and `~/.ssh/known_hosts` is consulted
-automatically, so a host whose key you have not already accepted is rejected.
-To trust a server whose key lives elsewhere, point at an extra known_hosts file
-via the optional `sftp_known_hosts` credential.
+A server's host key is how your machine recognizes it: the first time you
+connect, OpenSSH records that key in `~/.ssh/known_hosts`, and every later
+connection checks the key still matches. Without that check, someone who can
+intercept your network traffic could impersonate the server and read
+everything you upload or download; the check is what makes that attack fail
+silently instead of succeeding silently. `sftp_helper` never disables host key
+verification. Every `sftp` invocation passes `StrictHostKeyChecking=yes` and
+`~/.ssh/known_hosts` is consulted automatically, so a host whose key you have
+not already accepted is rejected. To trust a server whose key lives
+elsewhere, point at an extra known_hosts file via the optional
+`sftp_known_hosts` credential.
 
 ## Multi-surface exposure
 

@@ -7,13 +7,14 @@ existence remotely.
 
 Backed by the system OpenSSH client (the ``sftp`` binary driven in batch mode
 via ``os_helper.system``) rather than an in-process SSH library. This is a
-deliberate choice: OpenSSH is the reference SSH implementation, ships on macOS,
-Linux and Windows 10+/Server 2019+, and — crucially — authenticates exactly the
-way the operator's own ``ssh`` / ``sftp`` commands do. In particular it honours
-the SSH agent and lets ``sftp_key`` point at your *public* key (the recommended
-value: ``~/.ssh/id_ed25519.pub`` — the agent / a hardware token then performs
-the signature, so no private-key material is named in the config) as readily as
-at a private key, which an in-process library cannot do.
+deliberate choice: OpenSSH is the reference SSH implementation, it ships on
+macOS, Linux and Windows 10+/Server 2019+, and it authenticates exactly the
+way the operator's own ``ssh`` / ``sftp`` commands do, which matters most of
+all. In particular it honours the SSH agent and lets ``sftp_key`` point at
+your *public* key (the recommended value: ``~/.ssh/id_ed25519.pub``, letting
+the agent or a hardware token perform the signature, so no private-key
+material is ever named in the config) as readily as at a private key, which
+an in-process library cannot do.
 
 Host key verification is on by default and cannot be disabled: every invocation
 passes ``StrictHostKeyChecking=yes``, so a host whose key is not already in

@@ -13,7 +13,7 @@ Design notes
 - Subcommands mirror ``sftp-helper`` (the argparse twin) so both CLIs
   can be introspected identically by higher layers (FastAPI).
 - Flags reuse the argparse names (``--config`` / ``--remote`` / …) rather
-  than the more idiomatic click positional style — consistency across
+  than the more idiomatic click positional style: consistency across
   the two CLIs beats micro-idiomaticity here.
 - Errors from the library propagate unchanged; click handles the
   formatting.

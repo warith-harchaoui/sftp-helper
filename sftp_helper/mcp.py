@@ -2,11 +2,12 @@
 
 A thin adapter that exposes the FastAPI app from :mod:`sftp_helper.api` as MCP
 tools, so any MCP-aware host (an agent runtime, an IDE integration, a custom
-shell) can call the sftp-helper operations — upload, download, delete, exists,
-dir-exists, mkdir, normalize-path, strip-path, tempfile, show-credentials —
+shell) can call the sftp-helper operations (upload, download, delete, exists,
+dir-exists, mkdir, normalize-path, strip-path, tempfile, show-credentials)
 as first-class tools, against the single SFTP target the server was started
-with (strict host-key verification always on; credentials are loaded once at
-server start, never accepted in a request body — see :mod:`sftp_helper.api`).
+with. Strict host-key verification stays on always; credentials are loaded
+once at server start and never accepted in a request body, see
+:mod:`sftp_helper.api`.
 Uses `fastapi-mcp` (https://github.com/tadata-org/fastapi_mcp): one wrapper
 publishes the whole existing HTTP surface, so the routes are never duplicated.
 

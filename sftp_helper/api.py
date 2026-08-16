@@ -12,13 +12,13 @@ consumed by other services. Kept intentionally minimal:
 - JSON responses for the exists / delete / mkdir / show-credentials
   queries.
 - ``BackgroundTasks`` cleans temp files after the response has been
-  streamed — no leftover garbage on disk after a request.
+  streamed, so no garbage is left on disk after a request.
 
 Credentials
 -----------
 The credentials are loaded **once at import time** from the environment
 (``SFTP_HOST`` / ``SFTP_LOGIN`` / …) or from the file pointed at by
-``SFTP_HELPER_CONFIG``. We never accept credentials in a request body —
+``SFTP_HELPER_CONFIG``. We never accept credentials in a request body:
 the API is meant to be the trusted server-side view of a single SFTP
 target, not a multitenant relay.
 
