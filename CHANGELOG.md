@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-08-17
+
+### Changed
+
+- **Docs**: README.md/LISEZMOI.md now explain what SFTP actually is and why
+  an AI pipeline would use it, and ground host-key verification in the
+  attack it prevents (a spoofed server intercepting an upload/download)
+  instead of stating it as a bare mechanism. Module docstrings
+  (`__init__.py`, `api.py`, `cli_click.py`, `main.py`, `mcp.py`) had their
+  punctuation-dash asides rewritten as commas/colons/parentheses per the
+  suite's writing charter. No behavior change.
+
 ## [3.2.1] - 2026-08-14
 
 ### Security
