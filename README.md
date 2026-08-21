@@ -2,7 +2,7 @@
 
 [🇫🇷](https://github.com/warith-harchaoui/sftp-helper/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/sftp-helper/blob/main/README.md)
 
-[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
+[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/sftp-helper.svg)](https://pypi.org/project/sftp-helper/) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers`, built for developing Artificial Intelligence applications.
 
@@ -24,6 +24,13 @@ SFTP Helper is a Python library that provides utility functions for working with
 server, so it is deliberately **not** local-first and ships **no GUI**. For
 cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
 downloading media from a URL use `youtube-helper`.
+
+**Battle-tested.** Eleven tagged releases, a green CI on every push (unit
+tests plus a linter that blocks the merge exactly like a failing test), and a
+dedicated security pass (v3.2.1) that closed a path-injection gap in the
+batch-command builder before it ever shipped to a user. Nothing here is
+promised without a check backing it: the numbers above come straight from
+this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 
 ## Documentation
 

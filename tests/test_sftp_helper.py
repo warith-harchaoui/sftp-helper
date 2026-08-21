@@ -1164,6 +1164,23 @@ def test_run_sftp_with_progress_tty_survives_probe_errors(sftp, cred, monkeypatc
     assert res["code"] == 0
 
 
+def test_run_sftp_with_progress_tty_propagates_worker_exception(cred, monkeypatch):
+    # Regression test: a Python-level exception inside the worker thread
+    # (as opposed to an ordinary non-zero sftp exit code) used to be
+    # swallowed by the thread's default excepthook, leaving `result` an
+    # empty dict and surfacing as a confusing `KeyError: 'code'` at the
+    # call site instead of the real failure. It must now propagate on the
+    # main thread, exactly like the inline (non-TTY) path would raise.
+    monkeypatch.setattr(sftph_main, "_stderr_is_tty", lambda: True)
+
+    def raising_run_sftp(_cred, _commands, *, extra_env=None):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(sftph_main, "_run_sftp", raising_run_sftp)
+    with pytest.raises(RuntimeError, match="disk full"):
+        sftph_main._run_sftp_with_progress(cred, ["ls -l /"], total=100, probe=lambda: 0, desc="x")
+
+
 # ---------------------------------------------------------------------------
 # remote_tempfile
 # ---------------------------------------------------------------------------

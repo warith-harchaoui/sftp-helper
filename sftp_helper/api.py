@@ -419,10 +419,20 @@ def upload_endpoint(
     src = _spool(file, tmp, suffix_hint=Path(file.filename or "").suffix)
     try:
         addr = upload(str(src), cred, remote, overwrite=overwrite)
-    finally:
-        # Clean synchronously here so a slow client cannot leave the temp
-        # file lying around after the response has already returned.
-        background.add_task(_cleanup, tmp)
+    except Exception:
+        # FastAPI only wires a `background: BackgroundTasks` parameter onto
+        # the outgoing Response when the endpoint returns normally; when
+        # `upload()` raises, `_sftp_error_handler` builds a brand-new
+        # JSONResponse that this `background` instance is never attached
+        # to, so any task queued here would silently never run. Without
+        # this explicit, synchronous cleanup the spooled upload file (and
+        # its temp directory) would leak on disk on every failed upload.
+        # See `download_endpoint` below for the same pattern.
+        _cleanup(tmp)
+        raise
+    # Success path only: clean up after the response has been streamed, so
+    # a slow client cannot leave the temp file lying around.
+    background.add_task(_cleanup, tmp)
     return JSONResponse({"sftp_address": addr})
 
 

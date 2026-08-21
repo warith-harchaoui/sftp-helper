@@ -115,3 +115,57 @@ def test_missing_credentials_maps_to_503_not_generic_500(client):
     # This test suite runs with no real SFTP target configured, so this is
     # always the 503 branch (see conftest / module docstring).
     assert r.status_code == 503
+
+
+def test_upload_failure_cleans_up_temp_dir_synchronously(client, monkeypatch):
+    """A raised exception from ``upload()`` must not leak the spooled temp dir.
+
+    FastAPI only wires a ``background: BackgroundTasks`` parameter onto the
+    outgoing Response when the endpoint returns normally. When ``upload()``
+    raises, the generic Exception handler builds a brand-new JSONResponse
+    that never carries this request's background tasks, so a task queued
+    via ``background.add_task`` before the raise would silently never run.
+    ``upload_endpoint`` must therefore clean up synchronously in an
+    ``except`` block (mirroring ``download_endpoint``) rather than rely on
+    the background task for the failure path.
+    """
+    from pathlib import Path
+
+    import sftp_helper.api as api_mod
+
+    # Fake server-side credentials so `_cred_or_503()` proceeds instead of
+    # short-circuiting to 503 (this test suite otherwise runs with none).
+    monkeypatch.setattr(
+        api_mod,
+        "_SERVER_CRED",
+        {
+            "sftp_host": "sftp.example.com",
+            "sftp_login": "alice",
+            "sftp_https": "https://example.com/uploads",
+            "sftp_destination_path": "/",
+        },
+    )
+
+    captured: dict = {}
+
+    def failing_upload(src, _cred, _remote, *, overwrite=True):
+        # Confirm the spooled file exists at call time, then record its
+        # parent temp dir so the test can check it was actually removed.
+        assert Path(src).exists()
+        captured["tmp_dir"] = Path(src).parent
+        raise Exception("simulated SFTP failure")
+
+    monkeypatch.setattr(api_mod, "upload", failing_upload)
+
+    # Starlette's TestClient re-raises the original exception by default
+    # (``raise_server_exceptions=True``) even though `_sftp_error_handler`
+    # would turn it into a clean 502 for a real deployed server — see
+    # `ServerErrorMiddleware`, which always re-raises after sending its
+    # response so tooling like this can observe the underlying error. What
+    # matters here is that `upload_endpoint`'s own `except` block (which
+    # runs well before that middleware) has already fired by this point.
+    with pytest.raises(Exception, match="simulated SFTP failure"):
+        client.post("/upload", files={"file": ("a.txt", b"hello")})
+    # The temp dir must be gone right away — not left for a background
+    # task that FastAPI never actually schedules on this failure path.
+    assert not captured["tmp_dir"].exists()

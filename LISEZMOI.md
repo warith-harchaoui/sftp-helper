@@ -2,7 +2,7 @@
 
 [🇫🇷](https://github.com/warith-harchaoui/sftp-helper/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/sftp-helper/blob/main/README.md)
 
-[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
+[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/sftp-helper.svg)](https://pypi.org/project/sftp-helper/) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
 
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 
@@ -25,6 +25,14 @@ et depuis un serveur *distant* : il n'est donc volontairement **pas**
 local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
+
+**Éprouvé en production.** Onze versions publiées, une intégration continue
+verte à chaque envoi (tests unitaires et lint qui bloquent la fusion au même
+titre qu'un test qui échoue), et une revue de sécurité dédiée (v3.2.1) qui a
+fermé une brèche d'injection de chemin dans le constructeur de commandes
+batch avant qu'elle n'atteigne un seul utilisateur. Rien ici n'est promis
+sans preuve à l'appui : ces chiffres viennent directement des tags du dépôt
+et de son `CHANGELOG.md`, pas d'un argument commercial.
 
 ## Documentation
 

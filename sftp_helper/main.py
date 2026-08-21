@@ -711,9 +711,21 @@ def _run_sftp_with_progress(
         return _run_sftp(cred, commands)
 
     result: dict = {}
+    # A Python thread's default excepthook only prints an unhandled
+    # exception to stderr and lets the thread die silently — the main
+    # thread below would otherwise see `result` still empty (`{}`) and
+    # crash later with a confusing ``KeyError: 'code'`` instead of the
+    # real cause (e.g. the batch tempfile could not be created, disk
+    # full). Capture it here and re-raise it on the main thread once the
+    # bar is torn down, so this threaded path fails exactly like the
+    # inline ``_run_sftp`` call above does.
+    worker_error: list[BaseException] = []
 
     def worker() -> None:
-        result.update(_run_sftp(cred, commands))
+        try:
+            result.update(_run_sftp(cred, commands))
+        except BaseException as exc:  # noqa: BLE001 — re-raised on the main thread below
+            worker_error.append(exc)
 
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
@@ -736,6 +748,8 @@ def _run_sftp_with_progress(
     if cur is not None and cur > last:
         bar.update(cur - last)
     bar.close()
+    if worker_error:
+        raise worker_error[0]
     return result
 
 

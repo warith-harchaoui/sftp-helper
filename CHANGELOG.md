@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.3] - 2026-08-21
+
+### Fixed
+
+- **`api.py` upload/download endpoints leaked the spooled temp file on a
+  failed transfer**: FastAPI only wires a `background: BackgroundTasks`
+  onto the outgoing response on the success path, so queuing cleanup via
+  `background.add_task` inside a `finally` never ran it when the handler
+  raised (the error response is a fresh `JSONResponse` the task was never
+  attached to). Cleanup is now synchronous on the exception path and
+  still deferred to after the response on success.
+- **`_run_sftp_with_progress`'s worker thread silently swallowed
+  exceptions**: an error inside the background `sftp`/batch call left
+  `result` empty instead of propagating, surfacing later as a confusing
+  `KeyError: 'code'` instead of the real cause. The worker now captures
+  the exception and the main thread re-raises it after the progress bar
+  is torn down, matching the inline (non-threaded) call path's behavior.
+
 ## [3.2.2] - 2026-08-17
 
 ### Changed
