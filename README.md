@@ -6,7 +6,7 @@
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers`, built for developing Artificial Intelligence applications.
 
-SFTP, the SSH File Transfer Protocol, moves files to and from a remote server over the same encrypted channel used for a remote terminal login (SSH). The server never asks for a password if you would rather it did not: a key pair proves who you are, the same way a physical key proves you are allowed into a building, and the server only needs to know your key's public half. An AI pipeline that produces files (a rendered video, a trained model, a batch of transcripts) usually needs to hand them off to somewhere else without a human clicking through a file manager; `sftp-helper` is that hand-off, done from Python, with the file-integrity checks (resumable transfers, content hashing, atomic writes) that a script running unattended needs and a human with a mouse does not.
+SFTP, the SSH File Transfer Protocol, moves files to and from a remote server over the same encrypted channel used for a remote terminal login (SSH). The server never asks for a password if you would rather it did not: a key pair proves who you are, the same way a physical key proves you are allowed into a building; the server only needs to know your key's public half. An AI pipeline that produces files (a rendered video, a trained model, a batch of transcripts) usually needs to hand them off to somewhere else without a human clicking through a file manager; `sftp-helper` is that hand-off, done from Python, with the file-integrity checks (resumable transfers, content hashing, atomic writes) that a script running unattended needs and a human with a mouse does not.
 
 This toolbox requires:
   - a `settings.yaml` for the sftp parameters (or JSON or environment variables or .env)
@@ -25,7 +25,7 @@ server, so it is deliberately **not** local-first and ships **no GUI**. For
 cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
 downloading media from a URL use `youtube-helper`.
 
-**Battle-tested.** Eleven tagged releases, a green CI on every push (unit
+**Battle-tested.** Twelve tagged releases, a green CI on every push (unit
 tests plus a linter that blocks the merge exactly like a failing test), and a
 dedicated security pass (v3.2.1) that closed a path-injection gap in the
 batch-command builder before it ever shipped to a user. Nothing here is
@@ -256,7 +256,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 ## Host key verification
 
 A server's host key is how your machine recognizes it: the first time you
-connect, OpenSSH records that key in `~/.ssh/known_hosts`, and every later
+connect, OpenSSH records that key in `~/.ssh/known_hosts`; every later
 connection checks the key still matches. Without that check, someone who can
 intercept your network traffic could impersonate the server and read
 everything you upload or download; the check is what makes that attack fail

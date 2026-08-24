@@ -6,7 +6,7 @@
 
 `SFTP Helper` fait partie d'une collection de bibliothèques appelée `AI Helpers`, développée pour bâtir des applications d'intelligence artificielle.
 
-Le SFTP, protocole de transfert de fichiers par SSH (_SSH File Transfer Protocol_), déplace des fichiers vers et depuis un serveur distant par le même canal chiffré qu'utilise une connexion à distance en ligne de commande (SSH). Le serveur n'exige pas de mot de passe si l'on préfère s'en passer : une paire de clés prouve qui vous êtes, de la même façon qu'une clé physique prouve qu'on a le droit d'entrer dans un bâtiment, et le serveur n'a besoin de connaître que la moitié publique de votre clé. Un pipeline d'IA qui produit des fichiers (une vidéo rendue, un modèle entraîné, un lot de transcriptions) doit généralement les transmettre ailleurs sans qu'un humain ne clique dans un gestionnaire de fichiers ; `sftp-helper` fait ce transfert depuis Python, avec les vérifications d'intégrité (transferts reprenables, hachage du contenu, écritures atomiques) dont un script tournant sans surveillance a besoin, contrairement à un humain muni d'une souris.
+Le SFTP, protocole de transfert de fichiers par SSH (_SSH File Transfer Protocol_), déplace des fichiers vers et depuis un serveur distant par le même canal chiffré qu'utilise une connexion à distance en ligne de commande (SSH). Le serveur n'exige pas de mot de passe si l'on préfère s'en passer : une paire de clés prouve qui vous êtes, de la même façon qu'une clé physique prouve qu'on a le droit d'entrer dans un bâtiment ; le serveur n'a besoin de connaître que la moitié publique de votre clé. Un pipeline d'IA qui produit des fichiers (une vidéo rendue, un modèle entraîné, un lot de transcriptions) doit généralement les transmettre ailleurs sans qu'un humain ne clique dans un gestionnaire de fichiers ; `sftp-helper` fait ce transfert depuis Python, avec les vérifications d'intégrité (transferts reprenables, hachage du contenu, écritures atomiques) dont un script tournant sans surveillance a besoin, contrairement à un humain muni d'une souris.
 
 Cette boîte à outils nécessite :
   - un fichier `settings.yaml` pour les paramètres SFTP (ou JSON ou variables d'environnement ou `.env`)
@@ -26,9 +26,9 @@ local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
 
-**Éprouvé en production.** Onze versions publiées, une intégration continue
+**Éprouvé en production.** Douze versions publiées, une intégration continue
 verte à chaque envoi (tests unitaires et lint qui bloquent la fusion au même
-titre qu'un test qui échoue), et une revue de sécurité dédiée (v3.2.1) qui a
+titre qu'un test qui échoue) et une revue de sécurité dédiée (v3.2.1) qui a
 fermé une brèche d'injection de chemin dans le constructeur de commandes
 batch avant qu'elle n'atteigne un seul utilisateur. Rien ici n'est promis
 sans preuve à l'appui : ces chiffres viennent directement des tags du dépôt
@@ -52,7 +52,7 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
   un `unzip` distant) dès que le serveur accepte l'exécution, au lieu d'un
   aller-retour par fichier. Options `overwrite`/`resume`/`progress` : ignorer
   les destinations déjà présentes avec la même taille (synchronisation
-  incrémentale), abandonner un transfert partiel périmé, ou masquer la barre
+  incrémentale), abandonner un transfert partiel périmé ou masquer la barre
   de progression.
 - **Download** d'un fichier **ou d'un répertoire** distant vers le disque (par
   défaut le nom de base distant pour un fichier seul), accéléré par archive de
@@ -260,7 +260,7 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 ## Vérification de la clé d'hôte
 
-La clé d'hôte d'un serveur, c'est ce qui permet à votre machine de le reconnaître : à la première connexion, OpenSSH enregistre cette clé dans `~/.ssh/known_hosts`, et chaque connexion suivante vérifie qu'elle correspond toujours. Sans cette vérification, quelqu'un capable d'intercepter votre trafic réseau pourrait se faire passer pour le serveur et lire tout ce que vous envoyez ou recevez ; la vérification fait échouer cette attaque au lieu de la laisser réussir en silence. `sftp_helper` ne désactive jamais la vérification de la clé d'hôte. Chaque appel `sftp` passe `StrictHostKeyChecking=yes` et `~/.ssh/known_hosts` est consulté automatiquement, si bien qu'un hôte dont la clé n'a pas déjà été acceptée est refusé. Pour faire confiance à un serveur dont la clé n'est pas à l'emplacement par défaut, pointez sur un fichier `known_hosts` additionnel via l'identifiant optionnel `sftp_known_hosts`.
+La clé d'hôte d'un serveur, c'est ce qui permet à votre machine de le reconnaître : à la première connexion, OpenSSH enregistre cette clé dans `~/.ssh/known_hosts` et chaque connexion suivante vérifie qu'elle correspond toujours. Sans cette vérification, quelqu'un capable d'intercepter votre trafic réseau pourrait se faire passer pour le serveur et lire tout ce que vous envoyez ou recevez ; la vérification fait échouer cette attaque au lieu de la laisser réussir en silence. `sftp_helper` ne désactive jamais la vérification de la clé d'hôte. Chaque appel `sftp` passe `StrictHostKeyChecking=yes` et `~/.ssh/known_hosts` est consulté automatiquement, si bien qu'un hôte dont la clé n'a pas déjà été acceptée est refusé. Pour faire confiance à un serveur dont la clé n'est pas à l'emplacement par défaut, pointez sur un fichier `known_hosts` additionnel via l'identifiant optionnel `sftp_known_hosts`.
 
 ## Exposition multi-surface
 
