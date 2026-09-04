@@ -43,10 +43,10 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
-import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -1879,26 +1879,32 @@ def _upload_folder(
 
 
 def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, str]:
-    """Bulk-upload via one local zip -> one ``put`` -> one remote ``unzip``.
+    """Bulk-upload via one local ``tar.gz`` -> one ``put`` -> one remote ``tar -x``.
 
     Only called by :func:`upload_many` after :func:`_probe_exec` has
     confirmed the server accepts arbitrary exec — a plain SFTP subsystem
-    cannot run ``unzip``, and many hosting accounts restrict exec entirely
+    cannot run ``tar``, and many hosting accounts restrict exec entirely
     (see :func:`_probe_exec`'s docstring), which is why this is an
-    accelerator, never the only path.
+    accelerator, never the only path. ``tar`` is preferred over ``zip``/
+    ``unzip`` here: it ships on effectively every POSIX box (including
+    minimal containers that lack ``unzip``), preserves file modes, and is
+    the format most operators reach for by hand when they need to sanity-
+    check the archive themselves.
 
     Every file must resolve under ``cred["sftp_destination_path"]`` (one
-    zip can only explode under one root); a caller mixing destinations
+    archive can only explode under one root); a caller mixing destinations
     should split into separate :func:`upload_many` calls instead.
 
-    Staging, zipping and cleanup are all done through ``os_helper`` /
-    ``sftp_helper``'s own house utilities rather than raw ``tempfile`` /
-    ``zipfile`` calls: :func:`os_helper.temporary_folder` (local staging
-    tree), :func:`os_helper.zip_folder` (the archive itself),
-    :func:`os_helper.temporary_filename` (the local zip's path), and
-    :func:`remote_tempfile` (the remote zip's path) — each already handles
-    its own guaranteed cleanup, so this function does not track any temp
-    path by hand.
+    Staging and cleanup are done through ``os_helper`` /
+    ``sftp_helper``'s own house utilities rather than raw ``tempfile``
+    calls: :func:`os_helper.temporary_folder` (local staging tree),
+    :func:`os_helper.temporary_filename` (the local archive's path), and
+    :func:`remote_tempfile` (the remote archive's path) — each already
+    handles its own guaranteed cleanup, so this function does not track
+    any temp path by hand. The archive itself is built with the stdlib
+    :mod:`tarfile` (not :func:`os_helper.zip_folder`, which silently skips
+    dotfiles — a caller passing an explicit dotfile path here must see it
+    actually land, not vanish).
 
     Parameters
     ----------
@@ -1917,7 +1923,7 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
     ValueError
         If any `sftp_address` falls outside the shared destination root.
     Exception
-        If the upload or the remote unzip fails.
+        If the upload or the remote tar extraction fails.
     """
     dest_root = cred["sftp_destination_path"].rstrip("/")  # "" for the server root
 
@@ -1933,44 +1939,46 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
         arcname = remote_path[len(dest_root) :].lstrip("/")
         entries.append((local_path, sftp_address, arcname))
 
-    # Stage a mirror tree (arcname-relative) so os_helper.zip_folder — which
-    # zips a *folder*, paths relative to it, not an arbitrary scattered file
-    # list — can build the archive without us touching the zip format directly.
+    # Stage a mirror tree (arcname-relative) so the tar archive's own member
+    # names line up exactly with each file's position under dest_root,
+    # without us touching the tar format's path bookkeeping directly.
     with osh.temporary_folder(prefix="sftp-helper-bulk") as staging:
         for local_path, _addr, arcname in entries:
             staged_path = os.path.join(staging, arcname)
             osh.make_directory(os.path.dirname(staged_path) or staging)
             osh.copyfile(local_path, staged_path)
 
-        with osh.temporary_filename(suffix=".zip", prefix="sftp-helper-bulk") as zip_path:
-            osh.zip_folder(staging, zip_path)
+        with osh.temporary_filename(suffix=".tar.gz", prefix="sftp-helper-bulk") as tar_path:
+            with tarfile.open(tar_path, "w:gz") as tf:
+                for root, _dirs, filenames in os.walk(staging):
+                    for filename in filenames:
+                        full_path = os.path.join(root, filename)
+                        tf.add(full_path, arcname=os.path.relpath(full_path, staging))
 
-            with remote_tempfile(cred, ext="zip") as (remote_zip, _url):
-                upload(zip_path, cred, remote_zip)
+            with remote_tempfile(cred, ext="tar.gz") as (remote_tar, _url):
+                upload(tar_path, cred, remote_tar)
 
-                # unzip creates missing subdirectories itself — no separate
-                # mkdir -p pass needed, unlike the per-file path. -o
-                # overwrites in place, -q keeps the (unused) stdout small.
-                # The remote zip itself is cleaned up by remote_tempfile's
-                # own context-manager exit, success or failure alike — no
-                # explicit rm here.
+                # -C extracts straight into target_dir (no separate cd needed)
+                # and tar creates missing subdirectories itself, same as the
+                # unzip path it replaces. tar always overwrites existing
+                # files on extraction, so no equivalent of unzip's -o is
+                # needed. The remote archive itself is cleaned up by
+                # remote_tempfile's own context-manager exit, success or
+                # failure alike — no explicit rm here.
                 target_dir = dest_root or "/"
                 # shlex.quote (POSIX shell quoting), not a hand-rolled f'"..."':
                 # this remote command runs through the target's actual shell,
                 # where a bare double-quoted "{...}" still lets $(...) / `...`
                 # command-substitution through — quoting must defeat that too.
-                cmd = (
-                    f"cd {shlex.quote(target_dir)} && "
-                    f"unzip -o -q {shlex.quote(os.path.basename(remote_zip))}"
-                )
+                cmd = f"tar -xzf {shlex.quote(remote_tar)} -C {shlex.quote(target_dir)}"
                 res = _run_ssh_exec(cred, cmd)
                 if res["code"] != 0:
                     raise Exception(
-                        f"Remote unzip failed (exit {res['code']}): "
+                        f"Remote tar extraction failed (exit {res['code']}): "
                         f"{res['err'].strip() or res['out'].strip()}"
                     )
                 osh.info(
-                    f"Bulk archive upload: {len(entries)} file(s) via {os.path.basename(remote_zip)}"
+                    f"Bulk archive upload: {len(entries)} file(s) via {os.path.basename(remote_tar)}"
                 )
 
     return {local_path: sftp_address for local_path, sftp_address, _arc in entries}
@@ -1990,8 +1998,8 @@ def upload_many(
 
     Every SFTP command in this package pays a fresh SSH handshake unless
     ControlMaster reuse kicks in (see :func:`_control_path`); on a server
-    that also accepts exec, this collapses N file transfers into one zip
-    upload plus one remote unzip — the biggest possible win, since it avoids
+    that also accepts exec, this collapses N file transfers into one tar.gz
+    upload plus one remote extraction — the biggest possible win, since it avoids
     even the reduced per-file overhead ControlMaster leaves behind (one
     `put` conversation, one directory-creation round trip, one publish-rename
     per file). :func:`_probe_exec` detects that capability up front; a
@@ -2007,7 +2015,7 @@ def upload_many(
         Credentials dict.
     retries : int, optional
         Forwarded to :func:`upload` for the per-file fallback path (the
-        archive path has its own upload+unzip retry-free flow — a failure
+        archive path has its own upload+extract retry-free flow — a failure
         there falls all the way back to per-file, which does retry).
     archive : bool or None, optional
         Force the archive path (``True``), force the per-file path
@@ -2018,9 +2026,9 @@ def upload_many(
         Re-upload every file unconditionally (default ``True``). Set
         ``False`` to skip files already present with a matching size —
         turning a repeat call into an incremental sync. This *forces the
-        per-file path* regardless of `archive`: the archive path zips and
-        unzips the whole batch in one shot with no per-entry stat, so it has
-        no way to honour a per-file skip.
+        per-file path* regardless of `archive`: the archive path packs and
+        extracts the whole batch in one shot with no per-entry stat, so it
+        has no way to honour a per-file skip.
     resume, progress
         Forwarded to :func:`upload` for the per-file fallback path.
 
@@ -2247,19 +2255,20 @@ def _download_folder(
 
 
 def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, str]:
-    """Bulk-download via a remote-staged zip -> one ``get`` -> one local unzip.
+    """Bulk-download via a remote-staged ``tar.gz`` -> one ``get`` -> one local ``tar -x``.
 
     Only called by :func:`download_many` after :func:`_probe_exec` has
     confirmed the server accepts arbitrary exec — a plain SFTP subsystem
-    cannot run ``zip``, and many hosting accounts restrict exec entirely
+    cannot run ``tar``, and many hosting accounts restrict exec entirely
     (see :func:`_probe_exec`'s docstring), which is why this is an
-    accelerator, never the only path.
+    accelerator, never the only path. See :func:`_upload_many_archive` for
+    why ``tar`` is preferred over ``zip``/``unzip``.
 
     The mirror image of :func:`_upload_many_archive`, run in reverse: there,
-    the *local* side stages a mirror tree and zips it before one ``put``;
-    here, the *remote* side stages a mirror tree (via ``cp``, in a
-    :func:`_remote_scratch_dir`) and zips it before one ``get``, then the
-    archive is exploded into a local staging tree (``os_helper``'s own
+    the *local* side stages a mirror tree and archives it before one
+    ``put``; here, the *remote* side stages a mirror tree (via ``cp``, in a
+    :func:`_remote_scratch_dir`) and archives it before one ``get``, then
+    the archive is exploded into a local staging tree (``os_helper``'s own
     :func:`os_helper.temporary_folder` / :func:`os_helper.temporary_filename`
     — kept temporary the same way the upload side keeps its staging tree
     temporary) and each entry copied to its own requested `local_path` —
@@ -2283,7 +2292,8 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
     Raises
     ------
     Exception
-        If the remote staging/zip, the download, or local extraction fails.
+        If the remote staging/archiving, the download, or local extraction
+        fails.
     """
     entries: list[tuple[str, str, str]] = []  # (sftp_address, local_path, arcname)
     for sftp_address, local_path in files:
@@ -2307,21 +2317,27 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
             for _addr, _local, arc in entries
         ]
 
-        with remote_tempfile(cred, ext="zip") as (remote_zip, _url):
-            parts.append(f"cd {shlex.quote(stage_dir)} && zip -rq {shlex.quote(remote_zip)} .")
+        with remote_tempfile(cred, ext="tar.gz") as (remote_tar, _url):
+            # -C stage_dir archives the staged tree's contents directly, no
+            # separate cd needed.
+            parts.append(f"tar -czf {shlex.quote(remote_tar)} -C {shlex.quote(stage_dir)} .")
             res = _run_ssh_exec(cred, " && ".join(parts))
             if res["code"] != 0:
                 raise Exception(
-                    f"Remote archive staging/zip failed (exit {res['code']}): "
+                    f"Remote archive staging/tar failed (exit {res['code']}): "
                     f"{res['err'].strip() or res['out'].strip()}"
                 )
 
-            with osh.temporary_filename(suffix=".zip", prefix="sftp-helper-bulk") as zip_path:
-                download(remote_zip, cred, zip_path)
+            with osh.temporary_filename(suffix=".tar.gz", prefix="sftp-helper-bulk") as tar_path:
+                download(remote_tar, cred, tar_path)
 
                 with osh.temporary_folder(prefix="sftp-helper-bulk") as extracted:
-                    with zipfile.ZipFile(zip_path) as zf:
-                        zf.extractall(extracted)
+                    # filter="data" (PEP 706): reject absolute members / links
+                    # that would escape `extracted` — belt-and-suspenders,
+                    # since arcnames here derive from paths the caller already
+                    # has full SFTP read access to, not untrusted input.
+                    with tarfile.open(tar_path) as tf:
+                        tf.extractall(extracted, filter="data")
                     for _addr, local_path, arc in entries:
                         parent = os.path.dirname(local_path)
                         if parent:
@@ -2329,7 +2345,7 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
                         osh.copyfile(os.path.join(extracted, arc), local_path)
 
             osh.info(
-                f"Bulk archive download: {len(entries)} file(s) via {os.path.basename(remote_zip)}"
+                f"Bulk archive download: {len(entries)} file(s) via {os.path.basename(remote_tar)}"
             )
 
     return {sftp_address: local_path for sftp_address, local_path, _arc in entries}
@@ -2348,8 +2364,8 @@ def download_many(
     """Download several files in one bulk operation, archive-accelerated when possible.
 
     The download-side mirror of :func:`upload_many`: on a server that also
-    accepts exec, this collapses N downloads into one remote stage+zip, one
-    ``get``, and one local unzip — avoiding even the reduced per-file
+    accepts exec, this collapses N downloads into one remote stage+tar, one
+    ``get``, and one local extraction — avoiding even the reduced per-file
     overhead ControlMaster reuse leaves behind (one `get` conversation per
     file otherwise). :func:`_probe_exec` detects that capability up front; a
     server without it (most SFTP-only hosting accounts) falls back to the
@@ -2365,8 +2381,8 @@ def download_many(
         Credentials dict.
     retries : int, optional
         Forwarded to :func:`download` for the per-file fallback path (the
-        archive path has its own stage+zip+get+unzip flow — a failure there
-        falls all the way back to per-file, which does retry).
+        archive path has its own stage+tar+get+extract flow — a failure
+        there falls all the way back to per-file, which does retry).
     archive : bool or None, optional
         Force the archive path (``True``), force the per-file path
         (``False``), or auto-detect via :func:`_probe_exec` (``None``,
@@ -2499,7 +2515,7 @@ def _remote_scratch_dir(cred: dict) -> Iterator[str]:
     The directory-shaped counterpart to :func:`remote_tempfile`, which only
     reserves a single file path. Used exclusively by
     :func:`_download_many_archive` for a server-side mirror tree that
-    ``zip`` can archive in one pass — only meaningful once
+    ``tar`` can archive in one pass — only meaningful once
     :func:`_probe_exec` has already confirmed the server accepts exec (a
     plain SFTP subsystem has no recursive-delete primitive of its own).
 

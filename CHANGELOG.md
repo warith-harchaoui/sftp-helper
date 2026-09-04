@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bulk archive acceleration (`upload_many`/`download_many`) now uses
+  `tar.gz` instead of `zip`/`unzip`**: `tar` ships on effectively every
+  POSIX box (including minimal containers that lack `unzip`), so this
+  widens which servers the accelerator actually engages on. As a side
+  effect, fixes a latent bug where a caller passing an explicit dotfile
+  path (e.g. `.env`) to `upload_many` would have it silently dropped by
+  `os_helper.zip_folder`'s hidden-file skip on the archive path, while
+  the per-file fallback path uploaded it fine — an inconsistency between
+  the two code paths behind the same public call. Local extraction now
+  also passes `filter="data"` (PEP 706) as defense in depth.
+
 ## [3.2.3] - 2026-08-21
 
 ### Fixed

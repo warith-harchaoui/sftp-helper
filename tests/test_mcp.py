@@ -41,3 +41,23 @@ def test_api_still_served_next_to_mcp() -> None:
     with TestClient(mcp_module.app) as client:
         res = client.get("/health")
         assert res.status_code == 200 and res.json()["status"] == "ok"
+
+
+def test_main_reads_host_port_env_and_calls_uvicorn_run(monkeypatch) -> None:
+    """``main()`` resolves ``SFTP_HELPER_HOST``/``_PORT`` and hands the same
+    ``app`` (HTTP + MCP) to uvicorn — mocked so this never actually binds a
+    socket."""
+    import uvicorn
+
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: calls.append((a, k)))
+    monkeypatch.setenv("SFTP_HELPER_HOST", "0.0.0.0")
+    monkeypatch.setenv("SFTP_HELPER_PORT", "9000")
+
+    mcp_module.main()
+
+    (call,) = calls
+    _args, kwargs = call
+    assert kwargs["host"] == "0.0.0.0"
+    assert kwargs["port"] == 9000
+    assert kwargs["workers"] == 1

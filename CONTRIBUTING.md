@@ -112,6 +112,24 @@ pytest -v -m integration  # integration only
 pytest -v -m ""           # everything
 ```
 
+### Coverage
+
+`pytest-cov` is in the `[dev]` extra but not wired into `addopts` — CI's
+gate stays a plain pass/fail on the suite above, not a coverage
+threshold. Run it explicitly when you want the numbers:
+
+```bash
+pytest -q -m "" --cov=sftp_helper --cov-report=term-missing
+```
+
+Style note: prefer a functional test that exercises a handler/endpoint
+through its real entry point (CLI subcommand, HTTP route, public library
+function) over a structural one that only inspects parser/schema wiring —
+it reaches more of the actual code and is worth more than several
+structural tests stacked on the same function. `tests/test_cli.py`'s
+`cli_driver` fixture is the pattern: one functional test runs against both
+CLI backends instead of being hand-duplicated per backend.
+
 ## Pre-push hook
 
 A git `pre-push` hook blocks the push outright if `ruff check`, `ruff

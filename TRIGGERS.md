@@ -30,9 +30,10 @@ Every operation is also reachable through the click CLI (`sftp-helper-click …`
 same flags).
 
 `upload`/`download` handle a directory transparently: every file underneath is
-sent in one `upload_many`/`download_many` batch, which zips-and-ships as a
-single archive (one `put`/`get` plus one remote `unzip`/`zip`) whenever the
-server accepts exec, instead of one round trip per file. `upload_many` and
+sent in one `upload_many`/`download_many` batch, which packs-and-ships as a
+single `tar.gz` archive (one `put`/`get` plus one remote `tar` extraction/
+creation) whenever the server accepts exec, instead of one round trip per
+file. `upload_many` and
 `download_many` are also public library functions in their own right, for
 scattered `(local, remote)` pairs that don't share one directory tree — no
 dedicated CLI/API surface for that shape yet, since the primary directory

@@ -46,8 +46,9 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
   `sftp://host/path`, or omit it (single file only) to get a deterministic
   **content-hashed** name under `sftp_destination_path` (identical bytes
   de-duplicate to the same path). A directory is sent via `upload_many`,
-  which zips-and-ships as one archive (one `put` + one remote `unzip`)
-  whenever the server accepts exec, instead of one round trip per file.
+  which packs-and-ships as one `tar.gz` archive (one `put` + one remote
+  `tar` extraction) whenever the server accepts exec, instead of one round
+  trip per file.
   `overwrite`/`resume`/`progress` knobs: skip destinations already present
   with a matching size (incremental sync), discard a stale partial transfer,
   or suppress the progress bar.

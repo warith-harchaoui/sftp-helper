@@ -16,7 +16,7 @@ its position in the function.
 import json
 import os
 import shlex
-import zipfile
+import tarfile
 from types import SimpleNamespace
 
 import pytest
@@ -103,23 +103,21 @@ def test_credentials_from_env(monkeypatch, tmp_path):
         assert cred[k] == v
 
 
-def test_credentials_missing_required_key_raises(tmp_path):
-    """Dropping a *required* key (https) makes the loader raise."""
+def test_credentials_required_keys_enforced_and_optional_keys_default(tmp_path):
+    """Dropping a *required* key (https) raises; a config with only the
+    three required keys still loads, with password/destination path
+    falling back to their documented defaults."""
     incomplete = {k: v for k, v in CRED_KEYS.items() if k != "sftp_https"}
     cfg = tmp_path / "settings.json"
     cfg.write_text(json.dumps(incomplete))
     with pytest.raises(RuntimeError):
         sftph.credentials(str(cfg))
 
-
-def test_credentials_minimal_config_defaults(tmp_path):
-    """No password, no destination path: both fall back to documented defaults."""
     minimal = {
         "sftp_host": "sftp.example.com",
         "sftp_login": "alice",
         "sftp_https": "https://example.com/uploads",
     }
-    cfg = tmp_path / "settings.json"
     cfg.write_text(json.dumps(minimal))
     cred = sftph.credentials(str(cfg))
     assert cred["sftp_login"] == "alice"
@@ -288,8 +286,8 @@ def test_remote_file_exists(sftp, cred):
     sftp.push(err="Can't ls: /folder/x.txt: No such file or directory")
     assert sftph.remote_file_exists("/folder/x.txt", cred) is False
 
-
-def test_remote_file_exists_connection_error_raises(sftp, cred):
+    # A connection/auth failure is not a "missing file" — it must raise,
+    # not silently read as False.
     sftp.push(err="alice@sftp.example.com: Permission denied (publickey).")
     with pytest.raises(Exception, match="Permission denied|reach"):
         sftph.remote_file_exists("/folder/x.txt", cred)
@@ -429,7 +427,7 @@ def test_list_dir_stat_recursive(sftp, cred):
 # ---------------------------------------------------------------------------
 
 
-def test_make_remote_directory_creates_nested(sftp, cred):
+def test_make_remote_directory_creates_nested_or_noops_when_it_already_exists(sftp, cred):
     # First cd (isdir probe) says "missing", then the mkdir batch, then a final
     # cd confirming the target now exists.
     sftp.push(err="Couldn't stat remote file: No such file or directory")  # initial isdir -> False
@@ -441,12 +439,10 @@ def test_make_remote_directory_creates_nested(sftp, cred):
     assert '-mkdir "/a/b"' in mkdir_batch
     assert '-mkdir "/a/b/c"' in mkdir_batch
 
-
-def test_make_remote_directory_noop_when_exists(sftp, cred):
     # The very first isdir probe succeeds -> no mkdir batch is ever run.
     sftph.make_remote_directory("/a/b/c", cred)
-    assert len(sftp.calls) == 1
-    assert sftp.calls[0].batch.startswith('cd "/a/b/c"')
+    assert sftp.calls[-1].batch.startswith('cd "/a/b/c"')
+    assert len(sftp.calls) == 4  # the 3 above + this single noop probe
 
 
 # ---------------------------------------------------------------------------
@@ -649,23 +645,21 @@ def test_upload_progress_false_forwarded_to_run_sftp_with_progress(sftp, cred, t
 # ---------------------------------------------------------------------------
 
 
-def test_probe_exec_true_when_marker_echoed(sftp, cred):
+def test_probe_exec_true_when_marker_echoed_false_otherwise(sftp, cred, monkeypatch):
     sftp.push(out=f"{sftph_main._EXEC_PROBE_MARKER}\n")
     assert sftph_main._probe_exec(cred) is True
     # Plain `ssh`, not the `sftp` subsystem, and no -b batch file.
     assert sftp.calls[0].argv[0] not in ("sftp",) or "ssh" in sftp.calls[0].argv
     assert sftp.calls[0].batch is None
 
-
-def test_probe_exec_false_when_forced_command_rejects(sftp, cred):
     # The real-world case this guards against: connection succeeds (exit 0)
     # but a forced-command / restricted-shell account never actually runs
     # our command, so the marker never comes back.
     sftp.push(out="", err="fatal: bad argument\n")
     assert sftph_main._probe_exec(cred) is False
 
-
-def test_probe_exec_false_on_exception(sftp, cred, monkeypatch):
+    # Any failure to even ask (e.g. connection refused) also reads as False,
+    # never propagates.
     def boom(_argv, _env):
         raise Exception("connection refused")
 
@@ -678,13 +672,10 @@ def test_probe_exec_false_on_exception(sftp, cred, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_upload_many_empty_list(cred):
-    assert sftph.upload_many([], cred) == {}
-
-
 def test_upload_many_dispatch(cred, monkeypatch):
     """Which path upload_many takes, across exec support, an explicit archive
     override, an archive failure, and overwrite=False."""
+    assert sftph.upload_many([], cred) == {}
     files = [("a.txt", "/inbox/a.txt")]
 
     # exec available, no override -> archive path used, per-file never touched.
@@ -742,11 +733,11 @@ def test_upload_many_dispatch(cred, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# _upload_many_archive — zip -> put -> remote unzip
+# _upload_many_archive — tar.gz -> put -> remote tar -x
 # ---------------------------------------------------------------------------
 
 
-def test_upload_many_archive_zips_uploads_and_unzips(cred, tmp_path, monkeypatch):
+def test_upload_many_archive_packs_uploads_and_extracts(cred, tmp_path, monkeypatch):
     a = tmp_path / "a.txt"
     a.write_text("A")
     sub = tmp_path / "sub"
@@ -759,11 +750,11 @@ def test_upload_many_archive_zips_uploads_and_unzips(cred, tmp_path, monkeypatch
     def fake_upload(local_path, _cred, sftp_address, **_k):
         uploaded["local"] = local_path
         uploaded["remote"] = sftp_address
-        # Verify the zip actually contains the right entries at the right arcnames.
-        with zipfile.ZipFile(local_path) as zf:
-            names = set(zf.namelist())
+        # Verify the tarball actually contains the right entries at the right arcnames.
+        with tarfile.open(local_path) as tf:
+            names = set(tf.getnames())
             assert names == {"a.txt", "sub/b.txt"}
-            assert zf.read("a.txt") == b"A"
+            assert tf.extractfile("a.txt").read() == b"A"
         return sftp_address
 
     exec_calls = []
@@ -781,16 +772,16 @@ def test_upload_many_archive_zips_uploads_and_unzips(cred, tmp_path, monkeypatch
     result = sftph_main._upload_many_archive(files, cred)
 
     assert result == {str(a): "/var/www/uploads/a.txt", str(b): "/var/www/uploads/sub/b.txt"}
-    # The remote zip's path comes from remote_tempfile, not hand-rolled naming.
+    # The remote tarball's path comes from remote_tempfile, not hand-rolled naming.
     assert uploaded["remote"].startswith("/var/www/uploads/")
-    assert uploaded["remote"].endswith(".zip")
+    assert uploaded["remote"].endswith(".tar.gz")
     (cmd,) = exec_calls
     # Built with shlex.quote, not hand-rolled double quotes (see main.py) — a
     # plain path with no shell-special characters comes back unquoted.
-    assert "cd /var/www/uploads" in cmd
-    assert "unzip -o -q" in cmd
-    # remote_tempfile's own cleanup deletes the remote zip on success — no
-    # explicit "rm -f" baked into the unzip command anymore.
+    assert "tar -xzf /var/www/uploads/" in cmd
+    assert "-C /var/www/uploads" in cmd
+    # remote_tempfile's own cleanup deletes the remote tarball on success —
+    # no explicit "rm -f" baked into the extraction command.
     assert "rm -f" not in cmd
     assert deleted == [uploaded["remote"]]
 
@@ -803,20 +794,20 @@ def test_upload_many_archive_rejects_file_outside_destination_root(cred, tmp_pat
         sftph_main._upload_many_archive([(str(a), "/somewhere/else/a.txt")], cred)
 
 
-def test_upload_many_archive_cleans_up_remote_zip_on_unzip_failure(cred, tmp_path, monkeypatch):
+def test_upload_many_archive_cleans_up_remote_tar_on_extraction_failure(cred, tmp_path, monkeypatch):
     a = tmp_path / "a.txt"
     a.write_text("A")
     monkeypatch.setattr(sftph_main, "upload", lambda *a, **k: None)
-    monkeypatch.setattr(sftph_main, "_run_ssh_exec", lambda *a, **k: {"code": 1, "out": "", "err": "unzip: not found"})
+    monkeypatch.setattr(sftph_main, "_run_ssh_exec", lambda *a, **k: {"code": 1, "out": "", "err": "tar: not found"})
     deleted = []
     monkeypatch.setattr(sftph_main, "delete", lambda addr, _cred: deleted.append(addr))
-    with pytest.raises(Exception, match="Remote unzip failed"):
+    with pytest.raises(Exception, match="Remote tar extraction failed"):
         sftph_main._upload_many_archive([(str(a), "/var/www/uploads/a.txt")], cred)
     # remote_tempfile's own except-path cleanup deletes the reserved remote
-    # zip when the unzip command raises out of the with-block.
+    # tarball when the extraction command raises out of the with-block.
     assert len(deleted) == 1
     assert deleted[0].startswith("/var/www/uploads/")
-    assert deleted[0].endswith(".zip")
+    assert deleted[0].endswith(".tar.gz")
 
 
 # ---------------------------------------------------------------------------
@@ -1005,13 +996,10 @@ def test_download_folder_rejects_sha256(cred, tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_download_many_empty_list(cred):
-    assert sftph.download_many([], cred) == {}
-
-
 def test_download_many_dispatch(cred, monkeypatch):
     """Which path download_many takes, across exec support, an explicit archive
     override, an archive failure, and overwrite=False."""
+    assert sftph.download_many([], cred) == {}
     files = [("/inbox/a.txt", "a.txt")]
 
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: True)
@@ -1063,11 +1051,11 @@ def test_download_many_dispatch(cred, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# _download_many_archive — remote stage+zip -> get -> local unzip
+# _download_many_archive — remote stage+tar -> get -> local tar -x
 # ---------------------------------------------------------------------------
 
 
-def test_download_many_archive_stages_zips_downloads_and_extracts(cred, tmp_path, monkeypatch):
+def test_download_many_archive_stages_packs_downloads_and_extracts(cred, tmp_path, monkeypatch):
     dest_a = tmp_path / "a.txt"
     dest_b = tmp_path / "nested" / "b.txt"
 
@@ -1078,11 +1066,14 @@ def test_download_many_archive_stages_zips_downloads_and_extracts(cred, tmp_path
         return {"code": 0, "out": "", "err": ""}
 
     def fake_download(sftp_address, _cred, local_path, **_k):
-        # Simulate the remote zip landing locally with the two requested
+        # Simulate the remote tarball landing locally with the two requested
         # entries at their arcname (remote path minus leading slash).
-        with zipfile.ZipFile(local_path, "w") as zf:
-            zf.writestr("var/www/uploads/a.txt", "A")
-            zf.writestr("var/www/uploads/sub/b.txt", "B")
+        with tarfile.open(local_path, "w:gz") as tf:
+            for arcname, data in (("var/www/uploads/a.txt", b"A"), ("var/www/uploads/sub/b.txt", b"B")):
+                staged = tmp_path / "_staged_src" / arcname
+                staged.parent.mkdir(parents=True, exist_ok=True)
+                staged.write_bytes(data)
+                tf.add(staged, arcname=arcname)
         return local_path
 
     monkeypatch.setattr(sftph_main, "_run_ssh_exec", fake_exec)
@@ -1100,28 +1091,28 @@ def test_download_many_archive_stages_zips_downloads_and_extracts(cred, tmp_path
     assert dest_a.read_text() == "A"
     assert dest_b.read_text() == "B"
     # Two exec round trips: the scratch dir's own mkdir (_remote_scratch_dir),
-    # then the stage+zip command; both cleaned up (rm -rf) afterwards.
-    assert any("mkdir -p" in c and "cp -p" in c and "zip -rq" in c for c in exec_calls)
+    # then the stage+tar command; both cleaned up (rm -rf) afterwards.
+    assert any("mkdir -p" in c and "cp -p" in c and "tar -czf" in c for c in exec_calls)
     assert any(c.startswith("rm -rf") for c in exec_calls)
-    # remote_tempfile's own cleanup deletes the reserved remote zip.
+    # remote_tempfile's own cleanup deletes the reserved remote tarball.
     assert len(deleted) == 1
-    assert deleted[0].endswith(".zip")
+    assert deleted[0].endswith(".tar.gz")
 
 
-def test_download_many_archive_cleans_up_scratch_dir_on_zip_failure(cred, tmp_path, monkeypatch):
+def test_download_many_archive_cleans_up_scratch_dir_on_tar_failure(cred, tmp_path, monkeypatch):
     exec_calls = []
 
     def fake_exec(_cred, command):
         exec_calls.append(command)
         # The scratch dir's own creation (_remote_scratch_dir) and its
-        # eventual rm -rf both succeed; only the staging+zip command fails.
-        if "zip -rq" in command:
-            return {"code": 1, "out": "", "err": "zip: not found"}
+        # eventual rm -rf both succeed; only the staging+tar command fails.
+        if "tar -czf" in command:
+            return {"code": 1, "out": "", "err": "tar: not found"}
         return {"code": 0, "out": "", "err": ""}
 
     monkeypatch.setattr(sftph_main, "_run_ssh_exec", fake_exec)
     monkeypatch.setattr(sftph_main, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no download")))
-    with pytest.raises(Exception, match="Remote archive staging/zip failed"):
+    with pytest.raises(Exception, match="Remote archive staging/tar failed"):
         sftph_main._download_many_archive([("/var/www/uploads/a.txt", str(tmp_path / "a.txt"))], cred)
     assert any(c.startswith("rm -rf") for c in exec_calls)  # scratch dir still cleaned up
 
@@ -1186,7 +1177,7 @@ def test_run_sftp_with_progress_tty_propagates_worker_exception(cred, monkeypatc
 # ---------------------------------------------------------------------------
 
 
-def test_remote_tempfile_cleanup_on_success(sftp, cred):
+def test_remote_tempfile_cleanup_on_success_and_subdir_inclusion(sftp, cred):
     with sftph.remote_tempfile(cred, ext="txt") as (addr, url):
         assert addr.startswith(cred["sftp_destination_path"] + "/")
         assert addr.endswith(".txt")
@@ -1194,8 +1185,6 @@ def test_remote_tempfile_cleanup_on_success(sftp, cred):
     # On exit, a delete (rm) is issued for the reserved path.
     assert any(c.batch and c.batch.startswith("rm ") for c in sftp.calls)
 
-
-def test_remote_tempfile_includes_subdir(sftp, cred):
     with sftph.remote_tempfile(cred, subdir="batch-42") as (addr, url):
         assert "/batch-42/" in addr
         assert "/batch-42/" in url

@@ -48,9 +48,10 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
   une adresse `sftp://host/path` explicite ou omettez-la (fichier seul) pour
   obtenir un nom **haché sur le contenu** sous `sftp_destination_path` (des
   octets identiques se dédupliquent vers le même chemin). Un répertoire passe
-  par `upload_many`, qui zippe puis expédie en une seule archive (un `put` +
-  un `unzip` distant) dès que le serveur accepte l'exécution, au lieu d'un
-  aller-retour par fichier. Options `overwrite`/`resume`/`progress` : ignorer
+  par `upload_many`, qui empaquette puis expédie en une seule archive
+  `tar.gz` (un `put` + une extraction `tar` distante) dès que le serveur
+  accepte l'exécution, au lieu d'un aller-retour par fichier. Options
+  `overwrite`/`resume`/`progress` : ignorer
   les destinations déjà présentes avec la même taille (synchronisation
   incrémentale), abandonner un transfert partiel périmé ou masquer la barre
   de progression.
