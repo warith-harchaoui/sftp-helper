@@ -26,7 +26,7 @@ local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
 
-**Éprouvé en production.** Douze versions publiées, une intégration continue
+**Éprouvé en production.** Treize versions publiées, une intégration continue
 verte à chaque envoi (tests unitaires et lint qui bloquent la fusion au même
 titre qu'un test qui échoue) et une revue de sécurité dédiée (v3.2.1) qui a
 fermé une brèche d'injection de chemin dans le constructeur de commandes

@@ -25,7 +25,7 @@ server, so it is deliberately **not** local-first and ships **no GUI**. For
 cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
 downloading media from a URL use `youtube-helper`.
 
-**Battle-tested.** Twelve tagged releases, a green CI on every push (unit
+**Battle-tested.** Thirteen tagged releases, a green CI on every push (unit
 tests plus a linter that blocks the merge exactly like a failing test), and a
 dedicated security pass (v3.2.1) that closed a path-injection gap in the
 batch-command builder before it ever shipped to a user. Nothing here is
