@@ -12,9 +12,9 @@ Cette boîte à outils nécessite :
   - un fichier `settings.yaml` pour les paramètres SFTP (ou JSON ou variables d'environnement ou `.env`)
   - que vous ayez préalablement ajouté la clé SSH de votre machine locale sur le serveur SFTP
 
-[🌍 AI Helpers](https://harchaoui.org/warith/ai-helpers)
+[🌍 AI Helpers](https://deraison.ai/ai-helpers)
 
-[![logo](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/logo.png)](https://harchaoui.org/warith/ai-helpers)
+[![logo](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/logo.png)](https://deraison.ai/ai-helpers)
 
 SFTP Helper est une bibliothèque Python de fonctions utilitaires pour dialoguer avec des serveurs SFTP via le client OpenSSH `sftp` du système. La vérification de la clé d'hôte est active par défaut : `~/.ssh/known_hosts` est consulté et les hôtes inconnus sont refusés.
 
@@ -36,7 +36,7 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
 
 ## Documentation
 
-[💻 Documentation](https://harchaoui.org/warith/ai-helpers/docs/sftp-helper-doc/)
+[💻 Documentation](https://deraison.ai/ai-helpers/docs/sftp-helper-doc/)
 
 [🗺️ Paysage](https://github.com/warith-harchaoui/sftp-helper/blob/main/PAYSAGE.md)
 
@@ -94,7 +94,7 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
 - 🐧 **Ubuntu/Debian** : `sudo apt update && sudo apt install -y python3 python3-pip git`
 - 🪟 **Windows** (PowerShell) : `winget install Python.Python.3.12 Git.Git`
 
-On recommande de travailler dans un environnement Python. Si vous ne savez pas en créer un, voir [🥸 Conseils techniques](https://harchaoui.org/warith/4ml/#install).
+On recommande de travailler dans un environnement Python. Si vous ne savez pas en créer un, voir [🥸 Conseils techniques](https://deraison.ai/4ml/#install).
 
 ### Depuis PyPI (recommandé)
 
