@@ -1,0 +1,91 @@
+# sftp-helper skill — exhaustive trigger catalogue
+
+Auditable superset of the phrasings that should fire this skill. The
+`description:` in `SKILL.md` is what a host model actually sees and is capped at
+1024 characters; this file carries the full list. Keep the two in sync — and
+keep this file in sync with the repo-root `TRIGGERS.md`, the user-facing
+catalogue it mirrors.
+
+
+`sftp-helper` moves **files** to and from a **remote SFTP server over SSH**, with
+strict host-key verification always on. It is **not** local-first (its whole
+purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
+**not** a URL downloader, and it ships **no GUI**.
+
+## Operations → how to invoke
+
+| Intent | CLI | Library | API |
+|--------|-----|---------|-----------|
+| Upload a local file or directory | `sftp-helper upload` | `upload` (dirs → `upload_many`, archive-accelerated) | `POST /upload` |
+| Download a remote file or directory | `sftp-helper download` | `download` (dirs → `download_many`, archive-accelerated) | `GET /download` |
+| Delete a remote file (idempotent) | `sftp-helper delete` | `delete` | `DELETE /delete` |
+| Does a remote file exist | `sftp-helper exists` | `remote_file_exists` | `GET /exists` |
+| Does a remote directory exist | `sftp-helper dir-exists` | `remote_dir_exist` | `GET /dir-exists` |
+| List a remote directory's entries | `sftp-helper list` | `list_dir` (`list_dir_stat` for size/mtime per entry) | `GET /list` |
+| Stat one remote file (size/mtime) | `sftp-helper remote-stat` | `remote_stat` | `GET /remote-stat` |
+| Create a remote dir (`mkdir -p`) | `sftp-helper mkdir` | `make_remote_directory` | `POST /mkdir` |
+| Normalize a remote path | `sftp-helper normalize-path` | `normalize_path` | `GET /normalize-path` |
+| Strip `sftp://host` from an address | `sftp-helper strip-path` | `strip_sftp_path` | `GET /strip-path` |
+| Reserve a self-deleting temp path | `sftp-helper tempfile` | `remote_tempfile` | `POST /tempfile` |
+| Show resolved credentials (masked) | `sftp-helper show-credentials` | `credentials` | `GET /show-credentials` |
+
+Every operation is also reachable through the click CLI (`sftp-helper-click …`,
+same flags).
+
+`upload`/`download` handle a directory transparently: every file underneath is
+sent in one `upload_many`/`download_many` batch, which packs-and-ships as a
+single `tar.gz` archive (one `put`/`get` plus one remote `tar` extraction/
+creation) whenever the server accepts exec, instead of one round trip per
+file. `upload_many` and
+`download_many` are also public library functions in their own right, for
+scattered `(local, remote)` pairs that don't share one directory tree — no
+dedicated CLI/API surface for that shape yet, since the primary directory
+use case is already covered end-to-end by `upload`/`download`.
+
+## Natural-language phrasings that should fire
+
+- **Upload**: "upload / push / send / put this file on the SFTP server", "deliver
+  this to the partner inbox", "drop this on the remote box".
+- **Download**: "download / fetch / pull / retrieve this from the server", "grab
+  file X off the remote".
+- **Delete**: "delete / remove / rm this remote file", "purge that stale upload".
+- **Exists**: "does this file exist on the server", "is /path there remotely",
+  "check the remote directory".
+- **List / remote-stat**: "list the remote directory", "what's in /uploads on
+  the server", "how big is that remote file", "when was it last modified".
+- **Upload/download a folder**: "sync this whole folder to the server",
+  "upload every file under X", "download the entire remote directory".
+- **Mkdir**: "create the remote directory /a/b/c", "mkdir -p on the remote".
+- **Paths**: "normalize this remote path", "strip the sftp:// / host prefix".
+- **Temp / stage-and-share**: "reserve a temp path that deletes itself", "stage a
+  file and give me a live URL for a consumer".
+- **Credentials**: "load / show my SFTP credentials (masked)".
+- **Surfaces**: "run the sftp API server", "install sftp-helper".
+
+## Context cues it accepts
+
+- an `sftp://host/path` address in the prompt;
+- a host + login + remote path;
+- a `settings.yaml` file or `SFTP_*` env vars, plus a file to move.
+
+## When NOT to use sftp-helper (SKIP)
+
+- Plain **FTP / FTPS** (not SFTP-over-SSH), **SCP-only**, or the user explicitly
+  wants `scp` / `rsync` shell tooling.
+- **Cloud object storage**: S3 / GCS / Azure / MinIO / R2 / B2, use
+  `bucket-helper`.
+- **Local-only** file copy / move with no remote server.
+- **Downloading media from a URL / YouTube**: use `youtube-helper`.
+- **Interactive SSH shell / remote command execution** (paramiko `exec_command`,
+  Fabric): that is not a file transfer.
+- **Browsing a remote tree in a GUI** (FileZilla, Cyberduck, Transmit):
+  sftp-helper has no GUI.
+
+## See also
+
+- the repo's `README.md`: features, install, quick start.
+- the repo's `EXAMPLES.md`: runnable recipes.
+- the repo's `LANDSCAPE.md`: how sftp-helper compares to paramiko, pysftp,
+  asyncssh, Fabric, smart-open, PyFilesystem2, lftp, Rclone.
+- the repo's `GUI.md`: a *design plan* for a possible future dashboard (no GUI
+  ships today).

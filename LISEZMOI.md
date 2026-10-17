@@ -314,6 +314,17 @@ Il n'y a **aucune interface graphique**. Un *plan de conception* de tableau de
 bord (dashboard pipeline, panneau de santé du stockage, flux de transferts live)
 vit dans [GUI.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/GUI.md), mais aucun code de ce type n'est livré aujourd'hui.
 
+### En tant que skill d'agent
+
+`skills/sftp-helper/` empaquette sftp-helper comme **skill Claude** *et* skill
+**OpenCode**, pour qu'un agent puisse s'en saisir à votre place. Voir
+[`skills/README.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/skills/README.md) pour l'installer (liens
+symboliques vers `~/.claude/skills/` et `~/.opencode/skills/`) et
+[`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md) pour le catalogue exhaustif des
+déclencheurs — `scripts/check_triggers.py` maintient la description du skill
+alignée dessus ; la suite de tests échoue si une capacité cesse d'être
+nommée.
+
 ## Auteur
 
  - [Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
