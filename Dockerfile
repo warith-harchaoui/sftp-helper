@@ -4,8 +4,13 @@
 #
 # Two-stage build: the base stage installs the OpenSSH client (sftp-helper
 # shells out to the system `sftp` binary — it is a hard runtime requirement,
-# not optional) and installs the package with the [api] extra so the
+# not optional) and installs the package with the [mcp] extra so the
 # container can serve the HTTP surface out of the box.
+#
+# [mcp], not [api], because the default CMD below is `sftp-helper-mcp`, and
+# that entry point imports fastapi-mcp — which only [mcp] pulls in. Built with
+# [api] the image came up and died immediately on its own default command.
+# [mcp] depends on [api], so the HTTP surface comes along either way.
 #
 # The container reads credentials from either:
 #   - the file mounted at $SFTP_HELPER_CONFIG (bind-mount at runtime), or
@@ -63,7 +68,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY --chown=app:app pyproject.toml README.md LICENSE ./
 COPY --chown=app:app sftp_helper ./sftp_helper
 
-RUN pip install --no-cache-dir '.[api]'
+RUN pip install --no-cache-dir '.[mcp]'
 
 # --- runtime ----------------------------------------------------------------
 USER app

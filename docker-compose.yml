@@ -1,0 +1,105 @@
+# sftp-helper — Compose entry point for the container image next to this file.
+#
+#   docker compose up --build                 # HTTP + MCP on http://localhost:8000
+#   docker compose --profile dev up --build   # ... plus a throwaway SFTP server
+#   docker compose run --rm sftp-helper sftp-helper --help
+#
+# The image installs the [mcp] extra, so one app serves both doors: the
+# FastAPI routes and, mounted on that same app by fastapi-mcp, /mcp. Each MCP
+# tool *is* one of these routes — never a second implementation.
+#
+# Credentials come from settings.yaml, mounted read-only. Copy the template
+# first: cp settings.yaml.example settings.yaml
+#
+# SSH keys in a container
+# -----------------------
+# sftp-helper drives the system `sftp` binary, so it authenticates the way
+# your own shell does — and that is the part a container does not inherit.
+# The agent socket is mounted below so key-based auth keeps working without a
+# private key ever entering the image: run `ssh-add` on the host first.
+# On Docker Desktop and Colima for macOS, SSH_AUTH_SOCK inside Linux VMs is
+# the magic path used here rather than the host's own socket path.
+#
+# Host-key verification is always strict and cannot be turned off, so the
+# server's key has to be known. Seed it once:
+#
+#   mkdir -p ./.ssh && ssh-keyscan -p 22 sftp.example.com >> ./.ssh/known_hosts
+#
+# and point settings.yaml at it: sftp_known_hosts: "/home/app/.ssh/known_hosts"
+#
+# The `dev` profile
+# -----------------
+# Brings up a throwaway SFTP server (login `dev`, password `dev`) so the
+# surface can be exercised without touching a real host. Seed its key the same
+# way once it is up:
+#
+#   docker compose --profile dev up -d sftp-server
+#   ssh-keyscan -p 2222 localhost >> ./.ssh/known_hosts
+#
+# then set sftp_host: "sftp-server", sftp_login: "dev", sftp_passwd: "dev",
+# sftp_port: "22" (the in-network port, not the published 2222).
+
+services:
+  sftp-helper:
+    build: .
+    image: sftp-helper:local
+    ports:
+      - "${SFTP_HELPER_PORT:-8000}:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SFTP_HELPER_HOST: 0.0.0.0
+      SFTP_HELPER_PORT: "8000"
+      SFTP_HELPER_CONFIG: /config/settings.yaml
+      # Docker Desktop / Colima expose the host agent at this fixed path.
+      SSH_AUTH_SOCK: /run/host-services/ssh-auth.sock
+    volumes:
+      # Long form on purpose: with create_host_path off, a missing
+      # settings.yaml stops the service with a clear error instead of being
+      # silently invented as an empty *directory* at that path, which is what
+      # the short form does and which fails much later and much less clearly.
+      # Read-only: the service reads credentials, it never rewrites them.
+      - type: bind
+        source: ./settings.yaml
+        target: /config/settings.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      # Same reasoning: an auto-created empty ./.ssh would make every
+      # connection fail host-key verification with no hint as to why.
+      - type: bind
+        source: ./.ssh
+        target: /home/app/.ssh
+        read_only: true
+        bind:
+          create_host_path: false
+      - ./data:/data
+      - /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock
+    restart: unless-stopped
+    healthcheck:
+      # python, not curl: the slim image ships no HTTP client, and adding one
+      # just for a probe would grow the image for nothing.
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import sys, urllib.request
+          sys.exit(0 if urllib.request.urlopen("http://localhost:8000/health", timeout=3).status == 200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  sftp-server:
+    profiles: [dev]
+    image: atmoz/sftp:alpine
+    # user:password:uid:gid:upload-directory
+    command: dev:dev:1001:1001:upload
+    ports:
+      - "2222:22"
+    volumes:
+      - sftp-helper-dev:/home/dev/upload
+    restart: unless-stopped
+
+volumes:
+  sftp-helper-dev:
