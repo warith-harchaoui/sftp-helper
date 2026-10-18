@@ -81,13 +81,15 @@ jobs:
           #   - "Claude Desktop"  — the MCP-client product
           #   - "Claude Code"     — the CLI/agent product
           #   - "Claude Skill(s)" — the skill-ecosystem name this repo ships into
+          #   - "skill Claude"    — the same name in French word order (LISEZMOI)
+          #   - "claude mcp"      — the CLI call that registers the MCP server
           #   - "Claude / OpenCode" / "Claude + OpenCode" / "Claude and OpenCode"
           #                       — the two skill hosts named together
           #   - "~/.claude/skills/" and ".claude/…" — skill install paths
           # `-w` gives portable word boundaries (so neutral substrings like
           # "nomoreclaude" don't count) identically on macOS and Linux. This
           # workflow file, lockfiles and vector art are excluded from the scan.
-          allow='claude[ -]?desktop|claude code|claude skills?|claude ?[/+]? ?(and )?opencode|\.claude/|\.claude\b'
+          allow='claude[ -]?desktop|claude code|claude mcp|claude skills?|skills? claude|claude ?[/+]? ?(and )?opencode|\.claude/|\.claude\b'
           files="$(git grep -inwI -e claude -e anthropic -- ':!*.lock' ':!*.svg' ':!.github/workflows/ci.yml' | grep -viE "$allow" || true)"
           hist="$(git log --all --format='%H %s%n%b' | grep -iwE 'claude|anthropic' | grep -viE "$allow" || true)"
           if [ -n "$files" ] || [ -n "$hist" ]; then
@@ -95,4 +97,18 @@ jobs:
             printf '%s\n' "$files" "$hist"
             exit 1
           fi
-          echo "clean — no disallowed AI-vendor mentions"
+          # Attribution phrasings are blocked unconditionally, with no allowlist
+          # escape. "Claude Code" is a legitimate product name and is exempt
+          # above — which is exactly why the standard "Generated with [Claude
+          # Code](...)" trailer walked straight through the filter. The point of
+          # this job is to keep attribution out; a product name appearing inside
+          # an attribution trailer does not make it any less an attribution.
+          attrib='co-authored-by:.*(claude|anthropic)|generated with .{0,4}claude|authored (by|with) .{0,4}claude'
+          afiles="$(git grep -inIE "$attrib" -- ':!*.lock' ':!*.svg' ':!.github/workflows/ci.yml' || true)"
+          ahist="$(git log --all --format='%H %s%n%b' | grep -iE "$attrib" || true)"
+          if [ -n "$afiles" ] || [ -n "$ahist" ]; then
+            echo "::error::Claude/Anthropic attribution found — never allowed, product name or not"
+            printf '%s\n' "$afiles" "$ahist"
+            exit 1
+          fi
+          echo "clean — no disallowed AI-vendor mentions, no attribution"
