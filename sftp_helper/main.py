@@ -80,6 +80,29 @@ _UPLOAD_TMP_SUFFIX = ".sftp-helper-upload"
 # socket does not linger indefinitely.
 _CONTROL_PERSIST = "10m"
 
+# Keepalive bounds for an *established* session, which ConnectTimeout does not
+# cover.
+#
+# OpenSSH documents ConnectTimeout as "the timeout used when connecting to the
+# SSH server": it bounds the TCP connect and the handshake, and nothing after
+# them. Once a session is up, a server or network path that goes quiet mid
+# transfer is waited on forever -- there is no read timeout. Elsewhere in this
+# suite that exact failure mode held a process at 0 % CPU for over four hours
+# before it was killed.
+#
+# ServerAliveInterval makes the client send an encrypted keepalive after this
+# many seconds of silence; after ServerAliveCountMax unanswered ones it gives
+# up. 15 x 4 means a dead session fails in about a minute instead of never.
+#
+# This matters more here than it would elsewhere because ControlMaster is on: a
+# wedged master connection does not only hang its own transfer, every later
+# call in the run attaches to the same socket and hangs with it.
+#
+# Override with SFTP_HELPER_SERVER_ALIVE_INTERVAL / _COUNT_MAX; set the
+# interval to 0 to disable keepalives entirely (OpenSSH's own default).
+_SERVER_ALIVE_INTERVAL = os.environ.get("SFTP_HELPER_SERVER_ALIVE_INTERVAL", "15").strip() or "15"
+_SERVER_ALIVE_COUNT_MAX = os.environ.get("SFTP_HELPER_SERVER_ALIVE_COUNT_MAX", "4").strip() or "4"
+
 # Substrings that mark a *connection / authentication* failure in OpenSSH's
 # (English, never localized) stderr — as opposed to a per-file error such as
 # "No such file". These are used to tell "the server said the file is missing"
@@ -397,8 +420,12 @@ def _ssh_options(cred: dict, *, batch_mode: str) -> list[str]:
         opts += ["-i", os.path.expanduser(str(key))]
 
     # BatchMode avoids any interactive hang; strict host-key checking is the
-    # non-negotiable security posture inherited from the paramiko era;
-    # ConnectTimeout bounds a dead host so a call never hangs indefinitely.
+    # non-negotiable security posture inherited from the paramiko era.
+    #
+    # ConnectTimeout bounds reaching a dead host. It does NOT bound a session
+    # that connects fine and then stalls -- see _SERVER_ALIVE_INTERVAL, which
+    # covers that half. Both are needed: the first for a host that never
+    # answers, the second for one that stops answering.
     opts += [
         "-o",
         f"BatchMode={batch_mode}",
@@ -407,6 +434,13 @@ def _ssh_options(cred: dict, *, batch_mode: str) -> list[str]:
         "-o",
         "ConnectTimeout=30",
     ]
+    if _SERVER_ALIVE_INTERVAL != "0":
+        opts += [
+            "-o",
+            f"ServerAliveInterval={_SERVER_ALIVE_INTERVAL}",
+            "-o",
+            f"ServerAliveCountMax={_SERVER_ALIVE_COUNT_MAX}",
+        ]
 
     # An extra known_hosts file is *added* to the defaults (kept explicit so we
     # do not accidentally drop the system store while trusting the extra one).

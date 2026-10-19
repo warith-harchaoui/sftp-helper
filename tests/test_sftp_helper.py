@@ -1208,3 +1208,65 @@ def test_remote_tempfile_preserves_original_exception(sftp, cred):
             raise UserError("the real problem")
     finally:
         m.delete = original_delete
+
+
+# ---------------------------------------------------------------------------
+# Bounding an established session, not just the connect
+# ---------------------------------------------------------------------------
+# ConnectTimeout is documented by OpenSSH as "the timeout used when connecting
+# to the SSH server": it bounds the TCP connect and the handshake, and nothing
+# after them. A session that comes up and then goes quiet mid-transfer is
+# waited on forever. ServerAliveInterval/CountMax is the half that covers that,
+# and it matters more here because ControlMaster is on -- a wedged master does
+# not only hang its own transfer, every later call attaches to the same socket.
+
+_CRED = {"sftp_login": "u", "sftp_host": "h"}
+
+
+def _opt_values(cred=None, **kw) -> list[str]:
+    """Return just the `-o VALUE` payloads from a built option list."""
+    opts = sftph_main._ssh_options(cred or _CRED, batch_mode="yes", **kw)
+    return [opts[i + 1] for i, tok in enumerate(opts) if tok == "-o"]
+
+
+def test_both_halves_of_the_timeout_story_are_present() -> None:
+    values = _opt_values()
+    assert any(v.startswith("ConnectTimeout=") for v in values), "dead host unbounded"
+    assert any(v.startswith("ServerAliveInterval=") for v in values), (
+        "an established session that stops answering is unbounded"
+    )
+    assert any(v.startswith("ServerAliveCountMax=") for v in values)
+
+
+def test_the_keepalive_budget_is_finite() -> None:
+    """interval x countmax is how long a dead session survives before failing."""
+    values = _opt_values()
+    interval = next(int(v.split("=")[1]) for v in values if v.startswith("ServerAliveInterval="))
+    count = next(int(v.split("=")[1]) for v in values if v.startswith("ServerAliveCountMax="))
+    assert interval > 0
+    assert count > 0
+    assert interval * count <= 300, "a dead session should fail in minutes, not hours"
+
+
+def test_the_interval_is_overridable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sftph_main, "_SERVER_ALIVE_INTERVAL", "30")
+    assert "ServerAliveInterval=30" in _opt_values()
+
+
+def test_keepalives_can_be_disabled_deliberately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """0 restores OpenSSH's own default of sending none."""
+    monkeypatch.setattr(sftph_main, "_SERVER_ALIVE_INTERVAL", "0")
+    values = _opt_values()
+    assert not any(v.startswith("ServerAlive") for v in values)
+    # The connect bound must survive the opt-out.
+    assert any(v.startswith("ConnectTimeout=") for v in values)
+
+
+def test_sftp_and_ssh_share_one_option_builder() -> None:
+    """One chokepoint, so a bound cannot be added to one path and miss the other.
+
+    This is the mistake youtube-helper made in the same audit: a timeout added
+    to the option builders did not reach the code that built its own options.
+    """
+    argv, _ = sftph_main._sftp_argv(_CRED)
+    assert "ServerAliveInterval=15" in argv

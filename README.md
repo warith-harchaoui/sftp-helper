@@ -268,6 +268,32 @@ not already accepted is rejected. To trust a server whose key lives
 elsewhere, point at an extra known_hosts file via the optional
 `sftp_known_hosts` credential.
 
+## When a connection stalls
+
+Two different failures need two different bounds, and OpenSSH does not conflate
+them:
+
+- **A host that never answers** is bounded by `ConnectTimeout=30`, which covers
+  the TCP connect and the handshake.
+- **A session that comes up and then goes quiet** is bounded by
+  `ServerAliveInterval=15` with `ServerAliveCountMax=4`. OpenSSH documents
+  `ConnectTimeout` as applying only "when connecting to the SSH server", so
+  without the keepalives a transfer that stalls after a successful handshake is
+  waited on indefinitely — no read timeout exists. 15 × 4 means a dead session
+  fails in about a minute.
+
+Both are passed on every `ssh` and `sftp` invocation. Tune or disable them:
+
+```bash
+export SFTP_HELPER_SERVER_ALIVE_INTERVAL=30   # seconds; 0 disables keepalives
+export SFTP_HELPER_SERVER_ALIVE_COUNT_MAX=4   # unanswered probes before giving up
+```
+
+This matters more here than it would in a one-shot client, because connection
+multiplexing is on (`ControlMaster=auto`): a wedged master connection does not
+only hang its own transfer — every later call in the run attaches to the same
+control socket and hangs with it.
+
 ## Multi-surface exposure
 
 `sftp-helper` is not just a library: the same functions are exposed

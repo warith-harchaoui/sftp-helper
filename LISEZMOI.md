@@ -263,6 +263,33 @@ with sftph.remote_tempfile(credentials, ext="txt") as (sftp_address, url):
 
 La clé d'hôte d'un serveur, c'est ce qui permet à votre machine de le reconnaître : à la première connexion, OpenSSH enregistre cette clé dans `~/.ssh/known_hosts` et chaque connexion suivante vérifie qu'elle correspond toujours. Sans cette vérification, quelqu'un capable d'intercepter votre trafic réseau pourrait se faire passer pour le serveur et lire tout ce que vous envoyez ou recevez ; la vérification fait échouer cette attaque au lieu de la laisser réussir en silence. `sftp_helper` ne désactive jamais la vérification de la clé d'hôte. Chaque appel `sftp` passe `StrictHostKeyChecking=yes` et `~/.ssh/known_hosts` est consulté automatiquement, si bien qu'un hôte dont la clé n'a pas déjà été acceptée est refusé. Pour faire confiance à un serveur dont la clé n'est pas à l'emplacement par défaut, pointez sur un fichier `known_hosts` additionnel via l'identifiant optionnel `sftp_known_hosts`.
 
+## Quand une connexion se bloque
+
+Deux pannes différentes demandent deux bornes différentes, qu'OpenSSH ne
+confond pas :
+
+- **Un hôte qui ne répond jamais** est borné par `ConnectTimeout=30`, qui couvre
+  la connexion TCP puis la poignée de main.
+- **Une session qui s'établit puis se tait** est bornée par
+  `ServerAliveInterval=15` avec `ServerAliveCountMax=4`. OpenSSH documente
+  `ConnectTimeout` comme s'appliquant uniquement « when connecting to the SSH
+  server » : sans les keepalives, un transfert qui se bloque après une poignée
+  de main réussie est attendu indéfiniment — aucun délai de lecture n'existe.
+  15 × 4 signifie qu'une session morte échoue en une minute environ.
+
+Les deux sont passées à chaque invocation de `ssh` puis de `sftp`. Pour les
+ajuster ou les désactiver :
+
+```bash
+export SFTP_HELPER_SERVER_ALIVE_INTERVAL=30   # secondes ; 0 désactive les keepalives
+export SFTP_HELPER_SERVER_ALIVE_COUNT_MAX=4   # sondes sans réponse avant abandon
+```
+
+Cela compte davantage ici que dans un client ponctuel, car le multiplexage de
+connexion est actif (`ControlMaster=auto`) : une connexion maîtresse coincée ne
+bloque pas seulement son propre transfert — tout appel ultérieur de la série
+s'attache à la même socket de contrôle puis se bloque avec elle.
+
 ## Exposition multi-surface
 
 `sftp-helper` n'est pas qu'une bibliothèque : les mêmes fonctions sont

@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-10-19
+
+### Fixed
+
+- **An established SFTP session had no bound at all.** `_ssh_options` passed
+  `ConnectTimeout=30` with a comment claiming it meant "a call never hangs
+  indefinitely". The first half was true; the conclusion did not follow.
+  OpenSSH documents `ConnectTimeout` as the timeout used *when connecting* to
+  the server — it covers the TCP connect and the key exchange, and nothing
+  after them. Once a session is up, a server or network path that goes quiet
+  mid-transfer was waited on forever, because neither the protocol nor the
+  client provides a read timeout.
+
+  The package was therefore bounded against a host that never answers and
+  unbounded against one that stops answering — and it is the second that
+  actually occurs. Elsewhere in this suite the same failure mode held a process
+  at 0 % CPU for over four hours on half-closed sockets before it had to be
+  killed.
+
+  Every `ssh` and `sftp` invocation now also passes `ServerAliveInterval=15`
+  and `ServerAliveCountMax=4`: an encrypted keepalive after 15 s of silence,
+  giving up after four unanswered ones, so a dead session fails in about a
+  minute. Override with `SFTP_HELPER_SERVER_ALIVE_INTERVAL` and
+  `SFTP_HELPER_SERVER_ALIVE_COUNT_MAX`; set the interval to `0` to restore
+  OpenSSH's own default of sending none.
+
+  This matters more here than in a one-shot client because `ControlMaster=auto`
+  is on: a wedged master connection does not only hang its own transfer, every
+  later call in the run attaches to the same control socket and hangs with it.
+  The multiplexing that makes bulk operations fast also widens the blast radius
+  of a missing bound.
+
+### Documentation
+
+- **README / LISEZMOI gain a "When a connection stalls" section.** Neither
+  mentioned timeouts before. The new section draws the distinction explicitly —
+  a host that never answers versus one that stops answering — since conflating
+  the two is what the old code comment did, and spells out the `ControlMaster`
+  amplification so a reader deciding whether to disable keepalives knows the
+  cost is shared across the whole run.
+
 ## [3.3.0] - 2026-09-04
 
 ### Changed
