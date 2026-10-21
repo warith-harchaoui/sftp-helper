@@ -288,6 +288,52 @@ def _new_tmpdir() -> Path:
     return Path(tempfile.mkdtemp(prefix="sftp-helper-"))
 
 
+def _reject_retired_flag(old: str, new: str, sent: str | None) -> None:
+    """
+    Fail loudly when a client sends a form flag that checkbox semantics retired.
+
+    FastAPI 0.147.0 made an omitted ``bool`` form field evaluate to ``False``
+    ("matching unchecked HTML checkboxes", PR #16523) regardless of the
+    declared default. An on-by-default flag such as the old ``overwrite=True``
+    therefore inverted for every client that simply left it out, so the flag
+    was renamed to its off-by-default form -- which matches both the new
+    semantics and the CLI's own ``--no-overwrite`` spelling.
+
+    The rename on its own would be worse than the bug it fixes: FastAPI
+    ignores unknown form fields, so a client still sending ``overwrite=false``
+    would be silently promoted to overwriting and would clobber the very file
+    it asked us to keep. This turns that silent data loss into a 400 the
+    caller cannot miss.
+
+    Parameters
+    ----------
+    old : str
+        The retired field name, spelled as a stale client would still send it.
+    new : str
+        The field name that replaced it.
+    sent : str or None
+        The raw value received for ``old``; ``None`` when absent, which is the
+        expected case for an up-to-date client.
+
+    Raises
+    ------
+    HTTPException
+        With status 400 when ``sent`` is anything other than ``None``.
+    """
+    if sent is None:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"The `{old}` form field was retired in favour of `{new}`. "
+            "FastAPI 0.147 reads an omitted boolean form field as False "
+            f"(unchecked-checkbox semantics), which silently inverted `{old}`, "
+            f"so the flag is now expressed off-by-default: send `{new}=true` "
+            f"for what used to be `{old}=false`, and omit it otherwise."
+        ),
+    )
+
+
 def _mask(cred: dict) -> dict:
     """Return a copy of ``cred`` with the SFTP password redacted.
 
@@ -409,16 +455,34 @@ def upload_endpoint(
     remote: str = Form(
         "", description="Full sftp:// address or plain remote path (auto if empty)."
     ),
-    overwrite: bool = Form(
-        True, description="Re-upload even if the destination already matches in size."
+    no_overwrite: bool = Form(
+        False,
+        description=(
+            "Skip the transfer when the destination already matches in size. "
+            "Mirrors the CLI's --no-overwrite; omit it to re-upload, which "
+            "stays the default."
+        ),
+    ),
+    # Declared, not hidden: `include_in_schema` is only honoured for query,
+    # path and header parameters, so a Form field cannot be kept out of the
+    # generated body model. Declaring it is also the only public way to see
+    # that a stale client sent it -- hence `deprecated`, which is the signal
+    # OpenAPI actually has for "present, but do not use".
+    overwrite: str | None = Form(
+        None,
+        description="Retired -- send `no_overwrite` instead.",
+        deprecated=True,
     ),
 ) -> JSONResponse:
     """Upload the multipart file to the SFTP server. Returns the remote address."""
+    # Before anything touches the network or the disk: a stale client sending
+    # the retired flag must hear about it, not have its intent inverted.
+    _reject_retired_flag("overwrite", "no_overwrite", overwrite)
     cred = _cred_or_503()
     tmp = _new_tmpdir()
     src = _spool(file, tmp, suffix_hint=Path(file.filename or "").suffix)
     try:
-        addr = upload(str(src), cred, remote, overwrite=overwrite)
+        addr = upload(str(src), cred, remote, overwrite=not no_overwrite)
     except Exception:
         # FastAPI only wires a `background: BackgroundTasks` parameter onto
         # the outgoing Response when the endpoint returns normally; when

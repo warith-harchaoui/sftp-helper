@@ -105,7 +105,14 @@ def test_openapi_lists_expected_endpoints_with_expected_shapes(client):
     ]["$ref"]
     body_schema_name = body_schema_ref.rsplit("/", 1)[-1]
     props = schema["components"]["schemas"][body_schema_name]["properties"]
-    assert props["overwrite"]["default"] is True
+    # The flag is off-by-default on the wire: FastAPI 0.147 reads an omitted
+    # boolean form field as False regardless of the declared default, so an
+    # on-by-default `overwrite` could not survive. The retired name stays in
+    # the schema -- a Form field cannot be hidden from the body model -- but
+    # carries `deprecated` so clients and MCP consumers are warned off it.
+    assert props["no_overwrite"]["type"] == "boolean"
+    assert props["no_overwrite"]["default"] is False
+    assert props["overwrite"]["deprecated"] is True
 
     stat_params = {p["name"]: p for p in paths["/remote-stat"]["get"]["parameters"]}
     assert stat_params["remote"]["required"] is True
@@ -273,9 +280,62 @@ def test_upload_endpoint_success_returns_address_and_cleans_up_temp_dir(
     assert r.status_code == 200
     assert r.json() == {"sftp_address": "/var/www/uploads/a.txt"}
     assert captured["remote"] == "/var/www/uploads/a.txt"
+    # Omitting the flag must still mean "overwrite". FastAPI 0.147 reads an
+    # omitted boolean form field as False whatever default is declared, which
+    # is why the wire field is the off-by-default `no_overwrite` and not an
+    # on-by-default `overwrite`.
     assert captured["overwrite"] is True
     # The background cleanup task runs before TestClient returns.
     assert not captured["tmp_dir"].exists()
+
+
+def test_upload_endpoint_no_overwrite_is_forwarded(client, authed, monkeypatch):
+    """``no_overwrite=true`` must reach :func:`upload` as ``overwrite=False``.
+
+    The off-by-default spelling is the whole point of the flag: it is the one
+    shape FastAPI's unchecked-checkbox semantics cannot invert.
+    """
+    import sftp_helper.api as api_mod
+
+    captured = {}
+
+    def fake_upload(src, _cred, remote, *, overwrite):
+        captured["overwrite"] = overwrite
+        return "/var/www/uploads/a.txt"
+
+    monkeypatch.setattr(api_mod, "upload", fake_upload)
+    r = client.post(
+        "/upload",
+        files={"file": ("a.txt", b"hello")},
+        data={"remote": "/var/www/uploads/a.txt", "no_overwrite": "true"},
+    )
+    assert r.status_code == 200
+    assert captured["overwrite"] is False
+
+
+def test_upload_endpoint_rejects_the_retired_overwrite_flag(client, authed, monkeypatch):
+    """A client still sending ``overwrite`` gets a 400, never a silent flip.
+
+    FastAPI ignores unknown form fields, so without this guard an old client
+    sending ``overwrite=false`` would be silently promoted to overwriting and
+    would clobber the file it asked us to preserve. The upload must not even
+    be attempted.
+    """
+    import sftp_helper.api as api_mod
+
+    def fake_upload(*_a, **_k):  # pragma: no cover - must never run
+        raise AssertionError("upload() must not be reached for a retired flag")
+
+    monkeypatch.setattr(api_mod, "upload", fake_upload)
+    r = client.post(
+        "/upload",
+        files={"file": ("a.txt", b"hello")},
+        data={"remote": "/var/www/uploads/a.txt", "overwrite": "false"},
+    )
+    assert r.status_code == 400
+    detail = r.json()["detail"]
+    assert "`overwrite`" in detail
+    assert "`no_overwrite`" in detail
 
 
 def test_upload_endpoint_failure_cleans_up_temp_dir_synchronously(client, authed, monkeypatch):

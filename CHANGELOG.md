@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2026-10-21
+
+### Changed
+
+- **`POST /upload` renames `overwrite` to `no_overwrite`, and the old name is
+  now a 400.** FastAPI **0.147.0** (released 2026-10-19) changed how omitted
+  boolean form fields resolve: they are read as `False` "matching unchecked
+  HTML checkboxes", and the release notes are explicit that this applies to
+  "individual `Form` parameters [...] including required fields and fields
+  with defaults of `True` or `None`" (PR #16523).
+
+  `overwrite` was declared `bool = Form(True)`. Every client that simply left
+  it out — which is every client, since it was the documented default — began
+  getting `overwrite=False` instead: an upload whose destination already
+  matched in size was silently skipped. Nothing in this repository changed;
+  CI simply resolved a newer FastAPI than any developer machine had, which is
+  why the build went red on 2026-10-19 with no commit to blame.
+
+  Declaring the field `bool | None = Form(None)` does **not** escape it — the
+  upstream note names that exact case. The only shape the new semantics
+  cannot invert is an off-by-default flag, so the wire field is now
+  `no_overwrite`, matching the CLI's own `--no-overwrite` spelling. Omitting
+  it still means "overwrite", as documented.
+
+  The rename on its own would have been worse than the bug: FastAPI ignores
+  unknown form fields, so a client still sending `overwrite=false` would have
+  been silently promoted to overwriting and would have clobbered the file it
+  asked to keep. Sending the retired name is therefore a **400** that names
+  the replacement, before anything touches the network or the disk.
+
+  Kept a MINOR bump rather than MAJOR deliberately: the Python API is
+  untouched, `upload(..., overwrite=)` still means what it always did, and no
+  default behaviour is reversed — the change restores the documented default
+  that upstream had inverted. The HTTP field rename is the breaking part, it
+  only affects callers that named the flag explicitly, and those callers get
+  a loud error rather than a silent flip.
+
 ## [3.4.0] - 2026-10-19
 
 ### Fixed
