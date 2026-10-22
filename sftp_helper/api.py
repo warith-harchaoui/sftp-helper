@@ -48,6 +48,7 @@ Warith Harchaoui, Ph.D. — https://linkedin.com/in/warith-harchaoui/
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import tempfile
@@ -142,6 +143,13 @@ def _load_server_cred() -> dict:
         HTTP 503 in that case.
     """
     cfg = os.environ.get("SFTP_HELPER_CONFIG")
+    # Silence os-helper's own diagnostic for the duration of the probe. Its
+    # config loader logs at ERROR *and* raises, so a caller that handles the
+    # absence — as this one documents it does — still had the error printed
+    # for it. Importing `sftp_helper.api` with no credentials is a normal
+    # thing to do (inspecting routes, running the smoke tests, an MCP host
+    # starting up), and it must not write to stderr.
+    logging.getLogger("os_helper").setLevel(logging.CRITICAL)
     try:
         # ``credentials`` accepts ``None`` and falls back to env / .env.
         return credentials(cfg) if cfg else credentials(None)
@@ -150,6 +158,8 @@ def _load_server_cred() -> dict:
         # to be able to import the app even when there's no real SFTP
         # target on the host. Endpoints will surface a 503 lazily.
         return {}
+    finally:
+        logging.getLogger("os_helper").setLevel(logging.NOTSET)
 
 
 # Snapshot the resolved credentials at import time. Reloading requires a

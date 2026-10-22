@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2026-10-22
+
+### Fixed
+
+- **Importing `sftp_helper.api` or `.mcp` wrote to stderr when no credentials
+  were configured.** `_load_server_cred` deliberately tolerates their absence
+  — it returns `{}` and the endpoints raise 503 lazily — but os-helper's
+  config loader logs at ERROR *and* raises, so the handled absence was still
+  printed for the caller.
+
+  Importing either module without credentials is an ordinary thing to do:
+  inspecting the routes, running the smoke tests, or an MCP host starting up
+  — and an MCP host shows that stderr to its user, who has no idea why an SFTP
+  error appeared. The probe now silences os-helper's logger for its duration
+  and restores it afterwards. Held by a test that imports in a subprocess with
+  a cleared environment and asserts stderr is empty; proven by reverting the
+  fix and watching it report the exact line.
+
 ## [3.5.0] - 2026-10-21
 
 ### Changed

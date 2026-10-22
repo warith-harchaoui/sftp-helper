@@ -21,6 +21,7 @@ Warith Harchaoui, Ph.D. — https://linkedin.com/in/warith-harchaoui/
 from __future__ import annotations
 
 import contextlib
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -450,3 +451,31 @@ def test_tempfile_endpoint_reserves_and_returns_payload(client, authed, monkeypa
         "sftp_address": "/var/www/uploads/abc123.txt",
         "url": "https://example.com/uploads/abc123.txt",
     }
+
+
+def test_importing_the_api_writes_nothing_to_stderr() -> None:
+    """A library module must be silent about a condition it handles.
+
+    `_load_server_cred` deliberately tolerates absent credentials — it returns
+    `{}` and the endpoints raise 503 lazily — but os-helper's config loader
+    logs at ERROR *and* raises, so the handled absence was still printed for
+    the caller. Importing `sftp_helper.api` with no credentials is normal
+    (inspecting routes, the smoke tests, an MCP host starting up), and an MCP
+    host shows that stderr to the user.
+
+    Run in a subprocess with a cleared environment: in-process the module is
+    already imported, and the whole point is what happens on a fresh import
+    with nothing configured.
+    """
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import sftp_helper.api, sftp_helper.mcp"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", "")},
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stderr.strip() == "", f"import wrote to stderr: {result.stderr!r}"
