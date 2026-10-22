@@ -479,3 +479,24 @@ def test_importing_the_api_writes_nothing_to_stderr() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert result.stderr.strip() == "", f"import wrote to stderr: {result.stderr!r}"
+
+
+def test_the_declared_os_helper_floor_carries_the_quiet_config_loader() -> None:
+    """The silence above is a property of os-helper >= 2.9.1, not of this file.
+
+    Until 2.9.1 the config loader logged at ERROR *and* raised, so this package
+    had to silence that logger around its credential probe to get a quiet
+    import. The workaround is gone, which means the quiet now comes entirely
+    from the dependency — and a floor that admits an older os-helper would let
+    the stderr noise back in for whoever pins, with nothing red to show for it.
+    """
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parent.parent / "pyproject.toml").read_text(encoding="utf-8")
+    bound = re.search(r'"os-helper>=(\d+)\.(\d+)(?:\.(\d+))?', text)
+    assert bound, "pyproject.toml declares no os-helper lower bound"
+    floor = tuple(int(part or 0) for part in bound.groups())
+    assert floor >= (2, 9, 1), (
+        f"declared floor {bound.group(0)!r} predates the quiet config loader (2.9.1)"
+    )

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.2] - 2026-10-22
+
+### Changed
+
+- **The logger workaround is gone, because the cause was fixed upstream.**
+  3.5.1 had to silence os-helper's logger around the credential probe: that
+  package logged at ERROR *and* raised, so the absence this handler exists to
+  absorb was still printed for us. os-helper 2.9.1 stopped logging what it
+  raises, so catching the exception is now sufficient — which is what catching
+  an exception should mean.
+
+  The import is still silent; it is silent for the right reason now. The
+  `os-helper` floor rises to `>=2.9.1` accordingly, since the quiet is a
+  property of the dependency rather than of this file — and a test holds that
+  floor, because an older os-helper would let the stderr noise back in for
+  whoever pins, with nothing red to show for it.
+
 ## [3.5.1] - 2026-10-22
 
 ### Fixed
