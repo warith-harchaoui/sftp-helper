@@ -370,9 +370,7 @@ def test_upload_endpoint_failure_cleans_up_temp_dir_synchronously(client, authed
     assert not captured["tmp_dir"].exists()
 
 
-def test_download_endpoint_success_streams_file_and_cleans_up_temp_dir(
-    client, authed, monkeypatch
-):
+def test_download_endpoint_success_streams_file_and_cleans_up_temp_dir(client, authed, monkeypatch):
     import sftp_helper.api as api_mod
 
     captured = {}
@@ -426,9 +424,7 @@ def test_mkdir_endpoint_creates_and_confirms(client, authed, monkeypatch):
     import sftp_helper.api as api_mod
 
     calls = []
-    monkeypatch.setattr(
-        api_mod, "make_remote_directory", lambda remote, cred: calls.append(remote)
-    )
+    monkeypatch.setattr(api_mod, "make_remote_directory", lambda remote, cred: calls.append(remote))
     r = client.post("/mkdir", data={"remote": "/var/www/uploads/a/b/c"})
     assert r.status_code == 200
     assert r.json() == {"created": True, "remote": "/var/www/uploads/a/b/c"}
@@ -524,12 +520,20 @@ def test_a_batch_file_survives_an_accented_path_under_an_ascii_locale() -> None:
     import subprocess
     import sys
 
+    # The accented characters are written as `\uXXXX` escapes on purpose, so
+    # this script stays **pure ASCII as argv**. Under `LC_ALL=C` the child
+    # decodes its command line with the ASCII codec: a literal `é` here would
+    # fail before a single statement ran, which is how the first version of
+    # this test turned the suite red on Ubuntu while passing on macOS, where
+    # argv is UTF-8 regardless. The runtime string still carries the accents,
+    # which is the property under test.
     script = (
         "import os, tempfile\n"
+        "name = 'r\\u00e9sum\\u00e9.pdf'\n"
         "fd, p = tempfile.mkstemp(suffix='.batch')\n"
         "with os.fdopen(fd, 'w', encoding='utf-8') as f:\n"
-        "    f.write('get \"/remote/résumé.pdf\"\\n')\n"
-        "assert open(p, encoding='utf-8').read().count('résumé') == 1\n"
+        "    f.write('get \"/remote/' + name + '\"\\n')\n"
+        "assert open(p, encoding='utf-8').read().count(name) == 1\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", script],
