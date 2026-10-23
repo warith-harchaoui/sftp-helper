@@ -625,7 +625,14 @@ def _run_sftp(cred: dict, commands: list[str], *, extra_env: dict[str, str] | No
     # fully non-interactive. A trailing newline ensures the last command runs.
     fd, batch_path = tempfile.mkstemp(prefix="sftp-helper-", suffix=".batch")
     try:
-        with os.fdopen(fd, "w") as fout:
+        # `encoding="utf-8"` explicitly: these commands carry remote and local
+        # PATHS, which routinely hold accents. A bare `open` asks the locale,
+        # so under `LC_ALL=C` — a container, a cron job, a CI image — the
+        # encoding is ASCII and transferring `résumé.pdf` dies with
+        # UnicodeEncodeError before `sftp` is even invoked, naming the codec
+        # rather than the file. Verified: the same write succeeds on a UTF-8
+        # host and raises under `LC_ALL=C`.
+        with os.fdopen(fd, "w", encoding="utf-8") as fout:
             fout.write("\n".join(commands) + "\n")
         argv += ["-b", batch_path, _target(cred)]
         code, out, err = _system(argv, env)

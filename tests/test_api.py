@@ -500,3 +500,65 @@ def test_the_declared_os_helper_floor_carries_the_quiet_config_loader() -> None:
     assert floor >= (2, 9, 1), (
         f"declared floor {bound.group(0)!r} predates the quiet config loader (2.9.1)"
     )
+
+
+def test_a_batch_file_survives_an_accented_path_under_an_ascii_locale() -> None:
+    """Remote paths carry accents; the batch file must not depend on the locale.
+
+    `sftp -b` reads its command list from a file this package writes, and those
+    commands embed the remote and local PATHS verbatim. A bare `open(..., "w")`
+    asks `locale.getpreferredencoding()`, which under `LC_ALL=C` — a container,
+    a cron job, a CI image — is ASCII. Transferring `résumé.pdf` then died with
+    `UnicodeEncodeError` before `sftp` was invoked at all, naming the codec
+    instead of the file.
+
+    Unlike JSON, there is no `ensure_ascii` here to hide behind: the path goes
+    to the file as written.
+
+    Run in a subprocess, because the encoding is fixed when the file is opened
+    and nothing set in this process can change that. All three variables are
+    needed: `PYTHONUTF8=0` turns off UTF-8 mode (PEP 540) and
+    `PYTHONCOERCECLOCALE=0` stops Python quietly upgrading `C` to `C.UTF-8`
+    (PEP 538) — without the latter the test cannot fail.
+    """
+    import subprocess
+    import sys
+
+    script = (
+        "import os, tempfile\n"
+        "fd, p = tempfile.mkstemp(suffix='.batch')\n"
+        "with os.fdopen(fd, 'w', encoding='utf-8') as f:\n"
+        "    f.write('get \"/remote/résumé.pdf\"\\n')\n"
+        "assert open(p, encoding='utf-8').read().count('résumé') == 1\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            **os.environ,
+            "LC_ALL": "C",
+            "LANG": "C",
+            "PYTHONUTF8": "0",
+            "PYTHONCOERCECLOCALE": "0",
+        },
+    )
+    assert result.returncode == 0, f"accented path failed under LC_ALL=C:\n{result.stderr}"
+
+
+def test_the_batch_writer_states_its_encoding() -> None:
+    """The call site above is only safe while it keeps `encoding=`.
+
+    The behavioural test proves the *pattern* works; this pins the real call
+    site to it, so removing the argument is a red build rather than a bug that
+    only appears on a non-UTF-8 host nobody develops on.
+    """
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent / "sftp_helper" / "main.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.fdopen(fd, "w", encoding="utf-8") as fout' in source, (
+        "the sftp batch file is written without an explicit encoding again"
+    )
