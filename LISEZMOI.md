@@ -81,8 +81,8 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
 - **Vérification stricte de la clé d'hôte, toujours active** : OpenSSH
   `StrictHostKeyChecking=yes`, sans échappatoire ; faites confiance à une clé
   supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
-- **Trois surfaces, un seul comportement** : bibliothèque Python, CLI argparse
-  (`sftp-helper`), jumeau CLI click (`sftp-helper-click`) et surface HTTP FastAPI.
+- **Trois surfaces, un seul comportement** : bibliothèque Python, CLI click
+  (`sftp-helper`) et surface HTTP FastAPI.
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
@@ -99,11 +99,10 @@ On recommande de travailler dans un environnement Python. Si vous ne savez pas e
 ### Depuis PyPI (recommandé)
 
 ```bash
-# Utilitaires SFTP de base (bibliothèque + CLI argparse)
+# Utilitaires SFTP de base (bibliothèque + CLI click)
 pip install sftp-helper
 
 # Surfaces optionnelles
-pip install "sftp-helper[cli]"       # jumeau CLI en click
 pip install "sftp-helper[api]"       # surface HTTP FastAPI
 ```
 
@@ -115,7 +114,6 @@ cd sftp-helper
 pip install -e .
 
 # Surfaces optionnelles
-pip install -e ".[cli]"
 pip install -e ".[api]"
 ```
 
@@ -299,7 +297,7 @@ exposées comme CLI, comme surface HTTP FastAPI et comme outils MCP :
 # Bibliothèque Python (par défaut)
 import sftp_helper as sftph
 
-# CLI argparse (installé automatiquement)
+# la CLI (installée automatiquement)
 sftp-helper upload      --config settings.yaml --input local.txt --remote /uploads/local.txt
 sftp-helper upload      --config settings.yaml --input ./local_dir --remote /uploads/dir
 sftp-helper download    --config settings.yaml --remote /uploads/local.txt --output out.txt
@@ -307,10 +305,6 @@ sftp-helper exists      --config settings.yaml --remote /uploads/local.txt
 sftp-helper list        --config settings.yaml --remote /uploads --recursive
 sftp-helper remote-stat --config settings.yaml --remote /uploads/local.txt
 sftp-helper mkdir       --config settings.yaml --remote /uploads/a/b/c
-
-# Jumeau CLI en click (extra [cli] nécessaire)
-pip install "sftp-helper[cli]"
-sftp-helper-click upload --config settings.yaml --input local.txt --remote /uploads/local.txt
 
 # Surface HTTP FastAPI (extra [api] nécessaire)
 pip install "sftp-helper[api]"

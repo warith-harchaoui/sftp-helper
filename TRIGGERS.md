@@ -26,7 +26,7 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 | Reserve a self-deleting temp path | `sftp-helper tempfile` | `remote_tempfile` | `POST /tempfile` |
 | Show resolved credentials (masked) | `sftp-helper show-credentials` | `credentials` | `GET /show-credentials` |
 
-Every operation is also reachable through the click CLI (`sftp-helper-click …`,
+Every operation is also reachable through the CLI (`sftp-helper …`,
 same flags).
 
 `upload`/`download` handle a directory transparently: every file underneath is

@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2026-10-25
+
+### Changed
+- **One command line, built with click.** `sftp-helper` now runs the click
+  implementation; the argparse CLI and the `sftp-helper-click` twin are gone,
+  with the `[cli]` extra. `click` is a core dependency, the CLI no longer being
+  optional.
+
+  Parity was verified before the removal by introspecting the `ArgumentParser`
+  and `click.Group` objects rather than diffing help text: both doors agreed on
+  all twelve subcommands and every flag.
+
+- `cli_click.py` is now `cli.py`; `cli_argparse.py` is deleted, and the module
+  no longer guards `import click` behind a try/except install hint.
+- `os-helper` cap widened to `<4` (os-helper 3.0.0 dropped its own CLI).
+
+### Fixed
+- `--help` described the tool as the "click twin of the argparse CLI" — a
+  layout that no longer exists. It now says what the tool does.
+- `-V` had no short form, though the argparse door offered one.
+
+### Tests
+The `cli_driver` fixture was parametrized over both backends so the pair could
+be checked for drift. It now has one backend and survives for what it still
+does: run a command and pre-patch `credentials` for the fourteen subcommand
+tests. No scenario was lost — the parametrization was the duplication.
+
+### Migration
+`sftp-helper-click <verb>` becomes `sftp-helper <verb>` — same verbs, same
+flags. `pip install "sftp-helper[cli]"` fails on the unknown extra; plain
+`pip install sftp-helper` carries the CLI.
+
 ## [3.5.2] - 2026-10-22
 
 ### Changed

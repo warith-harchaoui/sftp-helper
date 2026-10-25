@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sftp-helper"
-version = "3.5.2"
+version = "3.6.0"
 description = "SFTP Helper — utility functions for working with SFTP servers via the system OpenSSH client, exposed as library, argparse CLI, click CLI, and FastAPI HTTP surface. Strict host-key verification, credentials loader, upload / download (archive-accelerated for directories) / list / stat / remove / exists / remote_tempfile context manager."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -27,13 +27,11 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
-    "os-helper>=2.9.1,<3",
+    "os-helper>=2.9.1,<4",
 ]
 
 [project.optional-dependencies]
 # CLI-only-with-click extra. argparse variant needs no runtime dep and
-# is always available.
-cli = ["click>=8.1,<9"]
 # FastAPI HTTP surface (sftp_helper.api). uvicorn + python-multipart
 # so multipart file uploads work out of the box.
 api = [
@@ -73,9 +71,7 @@ dev = [
 
 [project.scripts]
 # argparse-based CLI — no runtime dep beyond stdlib + core package.
-sftp-helper = "sftp_helper.cli_argparse:main"
-# click-based twin — install with [cli] extra.
-sftp-helper-click = "sftp_helper.cli_click:main"
+sftp-helper = "sftp_helper.cli:main"
 # HTTP API + MCP server — install with [mcp].
 sftp-helper-mcp = "sftp_helper.mcp:main"
 

@@ -1,22 +1,20 @@
 """
-Tests for the argparse and click CLIs.
+Tests for the command line — one door now, built with click.
 
-Both CLIs (:mod:`sftp_helper.cli_argparse`, :mod:`sftp_helper.cli_click`)
-mirror the same subcommands and flag names by design, so every
-subcommand's actual behaviour is tested *once*, through the ``cli_driver``
-fixture parametrized over both backends, rather than hand-duplicated per
-backend. Each functional test monkeypatches only the underlying
-``sftp_helper.main`` function a handler calls — the same boundary
-``test_sftp_helper.py`` mocks at — so these exercise the CLI's real
-argument-translation and output-formatting layer, not just parser/group
-wiring.
+Each functional test monkeypatches only the underlying ``sftp_helper``
+function a handler calls — the same boundary ``test_sftp_helper.py``
+mocks at — so these exercise the CLI's real argument-translation and
+output-formatting layer, not just group wiring.
 
-Two tests are kept backend-specific rather than folded into
-``cli_driver``: the "clean error, not a traceback" checks call each
-module's actual ``main()`` console-script entry point directly. Click's
-``CliRunner`` (used by ``cli_driver``) has its own exception handling that
-would not catch a regression in ``cli_click.main()``'s own try/except, so
-that one behaviour needs the real entry point, not the test harness.
+The ``cli_driver`` fixture used to be parametrized over two backends,
+argparse and a click twin, because the pair had to be checked for drift.
+There is one backend now, and the fixture survives for what it still
+does: run a command and pre-patch ``credentials``.
+
+One test stays outside it: the "clean error, not a traceback" check calls
+the real ``main()`` console-script entry point, because click's
+``CliRunner`` has its own exception handling and would not catch a
+regression in ``main()``'s own try/except.
 
 Usage Example
 -------------
@@ -65,21 +63,11 @@ FAKE_CRED = {
 }
 
 
-def _run_argparse(args: list[str]) -> tuple[int, str]:
-    from sftp_helper.cli_argparse import main
-
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        try:
-            code = main(args)
-        except SystemExit as exc:
-            code = exc.code
-    return code, buf.getvalue()
-
-
-def _run_click(args: list[str]) -> tuple[int, str]:
+def _run(args: list[str]) -> tuple[int, str]:
+    """Invoke the CLI and return ``(exit code, stdout)``."""
     from click.testing import CliRunner
-    from sftp_helper.cli_click import cli
+
+    from sftp_helper.cli import cli
 
     result = CliRunner().invoke(cli, args)
     return result.exit_code, result.output
@@ -87,30 +75,24 @@ def _run_click(args: list[str]) -> tuple[int, str]:
 
 @dataclass
 class CLIDriver:
-    """One CLI backend, abstracted to a uniform ``run()`` + patchable module."""
+    """The CLI, abstracted to a uniform ``run()`` plus the patchable module."""
 
     name: str
     module: object
     run: Callable[[list[str]], tuple[int, str]]
 
 
-@pytest.fixture(params=["argparse", "click"])
-def cli_driver(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> CLIDriver:
-    """Both CLI backends expose identical subcommands/flags (by design), so
-    every functional test below runs once per backend through this fixture
-    instead of being hand-duplicated. Also pre-patches ``credentials`` to
-    ``FAKE_CRED`` since every credentialed subcommand needs it."""
-    if request.param == "click":
-        pytest.importorskip("click")
-        from sftp_helper import cli_click as module
+@pytest.fixture
+def cli_driver(monkeypatch: pytest.MonkeyPatch) -> CLIDriver:
+    """The CLI, with ``credentials`` pre-patched to ``FAKE_CRED``.
 
-        driver = CLIDriver("click", module, _run_click)
-    else:
-        from sftp_helper import cli_argparse as module
+    Every credentialed subcommand needs that patch, so it lives here rather
+    than in fourteen test bodies.
+    """
+    from sftp_helper import cli as module
 
-        driver = CLIDriver("argparse", module, _run_argparse)
     monkeypatch.setattr(module, "credentials", lambda *_a, **_k: dict(FAKE_CRED))
-    return driver
+    return CLIDriver("click", module, _run)
 
 
 # ---------------------------------------------------------------------------
@@ -118,22 +100,9 @@ def cli_driver(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) 
 # ---------------------------------------------------------------------------
 
 
-def test_argparse_parser_builds_with_expected_subcommands():
-    """Building the parser should never fail, and exposes every documented
-    subcommand (catches wiring drift)."""
-    from sftp_helper.cli_argparse import build_parser
-
-    parser = build_parser()
-    subparsers_action = next(
-        a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction"
-    )
-    assert EXPECTED_SUBCOMMANDS.issubset(set(subparsers_action.choices.keys()))
-
-
-def test_click_group_has_expected_subcommands():
-    """The click group must expose the same subcommands as the argparse CLI."""
-    pytest.importorskip("click")
-    from sftp_helper.cli_click import cli
+def test_group_has_expected_subcommands():
+    """The group exposes every documented subcommand — catches wiring drift."""
+    from sftp_helper.cli import cli
 
     assert EXPECTED_SUBCOMMANDS.issubset(set(cli.commands.keys()))
 
@@ -155,26 +124,16 @@ def test_cli_top_level_and_subcommand_help_exit_zero(cli_driver: CLIDriver):
 # ---------------------------------------------------------------------------
 
 
-def test_argparse_main_turns_library_error_into_clean_message(capsys):
+def test_main_turns_library_error_into_clean_message(monkeypatch, capsys):
     """A library exception (e.g. an unsafe path) prints one clean line and
-    exits 1 — not a raw Python traceback."""
-    from sftp_helper.cli_argparse import main
+    exits 1 — not a raw Python traceback.
 
-    rc = main(["normalize-path", "--path", "foo\nbar"])
-    assert rc == 1
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err.startswith("Error: ")
-    assert "Traceback" not in captured.err
+    Drives ``main()`` rather than the ``cli`` group, because ``main()`` is the
+    wrapper that does the translating.
+    """
+    from sftp_helper.cli import main
 
-
-def test_click_main_turns_library_error_into_clean_message(monkeypatch, capsys):
-    """Same contract as the argparse twin, but for ``sftp-helper-click``'s
-    own ``main()`` wrapper (not click's ``cli`` group alone)."""
-    pytest.importorskip("click")
-    from sftp_helper.cli_click import main
-
-    monkeypatch.setattr(sys, "argv", ["sftp-helper-click", "normalize-path", "--path", "foo\nbar"])
+    monkeypatch.setattr(sys, "argv", ["sftp-helper", "normalize-path", "--path", "foo\nbar"])
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 1

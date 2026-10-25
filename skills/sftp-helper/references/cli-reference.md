@@ -1,7 +1,7 @@
 # sftp-helper CLI reference
 
-Two CLIs over the same operations. `sftp-helper` (argparse) ships with the
-core package; `sftp-helper-click` (needs `[cli]`) is the click twin.
+One CLI, `sftp-helper`, built with click and shipped with the core package,
+over the same operations the library and the HTTP surface expose.
 
 Every command takes `--config PATH`; without it, credentials resolve from the
 environment.

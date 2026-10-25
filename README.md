@@ -74,8 +74,8 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 - **Strict host-key verification, always on**: OpenSSH
   `StrictHostKeyChecking=yes`, no opt-out; trust an extra key via the optional
   `sftp_known_hosts` credential.
-- **Three surfaces, one behavior**: Python library, argparse CLI (`sftp-helper`),
-  click CLI twin (`sftp-helper-click`), and FastAPI HTTP surface. See the
+- **Three surfaces, one behavior**: Python library, a click CLI
+  (`sftp-helper`), and a FastAPI HTTP surface. See the
   [multi-surface section](#multi-surface-exposure).
 - Trigger catalogue in
   [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
@@ -93,11 +93,10 @@ We recommend using Python environments. Check this link if you're unfamiliar wit
 ### From PyPI (recommended)
 
 ```bash
-# Core SFTP utilities (library + argparse CLI)
+# Core SFTP utilities (library + click CLI)
 pip install sftp-helper
 
 # Optional surfaces
-pip install "sftp-helper[cli]"       # click-based CLI twin
 pip install "sftp-helper[api]"       # FastAPI HTTP surface
 ```
 
@@ -109,7 +108,6 @@ cd sftp-helper
 pip install -e .
 
 # Optional surfaces
-pip install -e ".[cli]"
 pip install -e ".[api]"
 ```
 
@@ -303,7 +301,7 @@ as a CLI, a FastAPI HTTP surface, and MCP tools:
 # Python library (default)
 import sftp_helper as sftph
 
-# argparse-based CLI (installed automatically)
+# the CLI (installed automatically)
 sftp-helper upload      --config settings.yaml --input local.txt --remote /uploads/local.txt
 sftp-helper upload      --config settings.yaml --input ./local_dir --remote /uploads/dir
 sftp-helper download    --config settings.yaml --remote /uploads/local.txt --output out.txt
@@ -311,10 +309,6 @@ sftp-helper exists      --config settings.yaml --remote /uploads/local.txt
 sftp-helper list        --config settings.yaml --remote /uploads --recursive
 sftp-helper remote-stat --config settings.yaml --remote /uploads/local.txt
 sftp-helper mkdir       --config settings.yaml --remote /uploads/a/b/c
-
-# click-based CLI twin (needs the [cli] extra)
-pip install "sftp-helper[cli]"
-sftp-helper-click upload --config settings.yaml --input local.txt --remote /uploads/local.txt
 
 # FastAPI HTTP surface (needs the [api] extra)
 pip install "sftp-helper[api]"

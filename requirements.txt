@@ -4,7 +4,8 @@
 #     pip install -r requirements.txt
 #     pip install -e .           # sftp-helper itself (editable) or `pip install .`
 #
-# Optional surfaces (CLI/API/MCP) live behind extras, e.g. `.[cli]`, `.[api,mcp]`.
+# The CLI ships with the core install (click). The API and MCP surfaces live
+# behind extras, e.g. `.[api,mcp]`.
 # The os-helper pin is kept in lock-step with the release tag below.
 
 # --- Suite dependency -----------------------------------------------------

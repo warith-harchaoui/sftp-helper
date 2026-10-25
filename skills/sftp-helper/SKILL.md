@@ -10,7 +10,7 @@ description: >-
   says "upload this over SFTP / to my server", "scp this up", "download this
   from the server", "does this remote file exist", "list the remote
   directory", "mkdir on the server", "delete this remote file", "publish this
-  to my web host", "FTP this", or names `sftp-helper`, `sftp-helper-click`,
+  to my web host", "FTP this", or names `sftp-helper`,
   `sftp-helper-mcp`, `import sftp_helper as sh`, `paramiko`, `sftp://`. Do NOT
   use for S3-compatible object storage (bucket-helper), local file management
   (os-helper), or git / rsync workflows.
@@ -48,7 +48,7 @@ configured — no vendor default, no telemetry, no relay.
 ## Before anything: verify it is installed and configured
 
 ```bash
-sftp-helper --help                               # argparse CLI (ships with the package)
+sftp-helper --help                               # the CLI (ships with the package)
 python -c "import sftp_helper"                   # library import check
 sftp-helper show-credentials --config settings.yaml   # resolves config, masks the secret
 ```
@@ -56,8 +56,7 @@ sftp-helper show-credentials --config settings.yaml   # resolves config, masks t
 Install:
 
 ```bash
-pip install sftp-helper                    # core: library + argparse CLI
-pip install 'sftp-helper[cli]'             # + the click twin
+pip install sftp-helper                    # core: library + click CLI
 pip install 'sftp-helper[api]'             # + FastAPI HTTP surface
 pip install 'sftp-helper[mcp]'             # + MCP tools over the same app
 ```

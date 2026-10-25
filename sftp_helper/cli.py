@@ -1,12 +1,12 @@
 """
 SFTP Helper — click-based command-line interface.
 
-Twin of :mod:`sftp_helper.cli_argparse`: same public surface (identical
+The one command-line surface: same public surface (identical
 subcommand names, identical flag semantics), but implemented with
 :mod:`click` so users who already have a click-native shell setup
 (bash / zsh completion via ``click.shell_completion``, colored `--help`,
 nested command groups) can plug it in without friction. Installed as
-the ``sftp-helper-click`` entry point in ``pyproject.toml``.
+the ``sftp-helper`` entry point in ``pyproject.toml``.
 
 Design notes
 ------------
@@ -20,10 +20,10 @@ Design notes
 
 Usage Example
 -------------
->>> #   sftp-helper-click upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
->>> #   sftp-helper-click download --config settings.yaml --remote /uploads/local.txt --output out.txt
->>> #   sftp-helper-click exists   --config settings.yaml --remote /uploads/local.txt
->>> #   sftp-helper-click mkdir    --config settings.yaml --remote /uploads/a/b/c
+>>> #   sftp-helper upload   --config settings.yaml --input local.txt --remote /uploads/local.txt
+>>> #   sftp-helper download --config settings.yaml --remote /uploads/local.txt --output out.txt
+>>> #   sftp-helper exists   --config settings.yaml --remote /uploads/local.txt
+>>> #   sftp-helper mkdir    --config settings.yaml --remote /uploads/a/b/c
 
 Author
 ------
@@ -35,14 +35,9 @@ from __future__ import annotations
 import json
 import sys
 
-try:
-    import click
-except ImportError as exc:  # pragma: no cover
-    raise ImportError(
-        "The click CLI requires the [cli] extra. Install with: pip install 'sftp-helper[cli]'"
-    ) from exc
+import click
 
-# Same underlying functions as the argparse twin — one source of truth.
+# The same functions the library and the HTTP surface call — one source of truth.
 from . import (
     credentials,
     delete,
@@ -95,9 +90,10 @@ def _mask(cred: dict) -> dict:
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"], "max_content_width": 100},
 )
-@click.version_option(package_name="sftp-helper", prog_name="sftp-helper-click")
+# ``-V`` beside ``--version``, as the argparse door offered.
+@click.version_option(None, "-V", "--version", prog_name="sftp-helper")
 def cli() -> None:
-    """SFTP Helper — click twin of the argparse CLI. Same subcommands."""
+    """SFTP Helper — move files to and from an SFTP server."""
     # Nothing to do at the group level — every subcommand carries its
     # own arguments and side effects.
 
@@ -454,7 +450,7 @@ def show_credentials(config_: str | None) -> None:
 
 
 def main() -> None:
-    """Console entry point (``sftp-helper-click``).
+    """Console entry point (``sftp-helper``).
 
     Click's own ``main()`` only special-cases ``ClickException``/``Abort``
     (and a broken pipe); a plain library exception (e.g. from ``upload()``)
