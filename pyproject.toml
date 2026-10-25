@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sftp-helper"
 version = "3.6.0"
-description = "SFTP Helper — utility functions for working with SFTP servers via the system OpenSSH client, exposed as library, argparse CLI, click CLI, and FastAPI HTTP surface. Strict host-key verification, credentials loader, upload / download (archive-accelerated for directories) / list / stat / remove / exists / remote_tempfile context manager."
+description = "SFTP Helper — utility functions for working with SFTP servers via the system OpenSSH client, exposed as a library, a click CLI, and a FastAPI HTTP surface. Strict host-key verification, credentials loader, upload / download (archive-accelerated for directories) / list / stat / remove / exists / remote_tempfile context manager."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = {text = "BSD-3-Clause"}
@@ -27,11 +27,14 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
+    # click: the CLI is built with it and is the only command line this
+    # package has, so the dependency cannot be optional either. It used to
+    # sit in the [cli] extra beside an always-available argparse CLI.
+    "click>=8.1,<9",
     "os-helper>=2.9.1,<4",
 ]
 
 [project.optional-dependencies]
-# CLI-only-with-click extra. argparse variant needs no runtime dep and
 # FastAPI HTTP surface (sftp_helper.api). uvicorn + python-multipart
 # so multipart file uploads work out of the box.
 api = [
@@ -51,7 +54,7 @@ mcp = [
     "mcp>=1.12,<2",
 ]
 # `dev` keeps the bar low for CI — pytest + httpx (for FastAPI TestClient)
-# + click (so the click CLI import always resolves in tests) + pyyaml
+# + pyyaml
 # (used by the credentials tests to write YAML configs) + the mcp stack so
 # the MCP surface is actually exercised on every push, not silently skipped.
 # pytest-cov: not wired into CI's default run (see CONTRIBUTING.md), just
@@ -61,7 +64,6 @@ dev = [
     "pytest-cov>=5,<8",
     "pyyaml>=6",
     "httpx>=0.27",
-    "click>=8.1,<9",
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
     "python-multipart>=0.0.9,<1",
