@@ -25,7 +25,7 @@ server, so it is deliberately **not** local-first and ships **no GUI**. For
 cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
 downloading media from a URL use `youtube-helper`.
 
-**Battle-tested.** Thirteen tagged releases, a green CI on every push (unit
+**Battle-tested.** Eighteen tagged releases, a green CI on every push (unit
 tests plus a linter that blocks the merge exactly like a failing test), and a
 dedicated security pass (v3.2.1) that closed a path-injection gap in the
 batch-command builder before it ever shipped to a user. Nothing here is
@@ -204,7 +204,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub your-login@sftp.example.com   # macOS / Ubu
 type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"  # Windows
 ```
 
-## Usage
+## Quick start
 
 For the full catalog of recipes (uploads, downloads, existence checks, recursive directory creation, temporary remote files with auto-cleanup, strict host-key verification), see [📋 EXAMPLES.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXAMPLES.md).
 

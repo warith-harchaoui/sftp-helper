@@ -50,22 +50,32 @@ orchestration or with `Rclone` on multi-backend replication, and it
 drives the **system OpenSSH `sftp` client**, so it has no Python SSH
 dependency at all (only `os-helper`), and authenticates exactly like
 your own `ssh`/`sftp` (agent, `~/.ssh/config`, hardware tokens). You
-only pay for the FastAPI / click surfaces if you install their extras.
-That trade-off is the main differentiator against `pysftp` (unmaintained
-since 2016, missing recent security fixes) and against raw `paramiko`
-(correct, but requires 40 lines of boilerplate before you can `.put()`
-a file).
+only pay for the FastAPI / MCP surfaces if you install their extras.
+That trade-off is the main differentiator against `pysftp` (whose last
+release, 0.2.9, is dated 6 July 2016) and against raw `paramiko`
+(correct, but you assemble the transport, choose a missing-host-key
+policy and open an `SFTPClient` yourself before the first `.put()`).
 
 A few notes behind the ratings. On **host-key verification**,
-`sftp-helper` scores top because it defaults to
-`StrictHostKeyChecking=yes` with no opt-out flag; `paramiko` and
-`pysftp` only verify if you wire it
-yourself, while `asyncssh` and `Rclone` verify by default. On
-**temp remote file**, `sftp-helper`'s `remote_tempfile` context manager
+`sftp-helper` scores top because every invocation passes
+`StrictHostKeyChecking=yes` and there is no flag that turns it off.
+`asyncssh` also validates by default: its `known_hosts` argument falls
+back to `~/.ssh/known_hosts`, and only an explicit `known_hosts=None`
+disables the check. `paramiko` rejects an unknown host by default
+(`RejectPolicy`) but a fresh `SSHClient` holds **zero** host keys until
+you call `load_system_host_keys()`, so the store is yours to wire.
+`Rclone`'s SFTP backend defaults the other way: it performs no host-key
+validation until `known_hosts_file` is set (or a key is pinned with
+`--sftp-pin-host-key`), and it warns "No host key validation is being
+performed" every time it starts in that mode. Its four stars are for
+having the machinery and documenting it, not for arriving switched on.
+
+On **temp remote file**, `sftp-helper`'s `remote_tempfile` context manager
 is the only first-class, auto-cleaning implementation among the Python
-libraries here; only `Rclone`'s binary comes close. Its
-**multi-surface** score reflects argparse + click + FastAPI behind
-the same function signatures, and its **config loader** delegates to
+libraries here; only `Rclone`'s binary comes close. Its **multi-surface**
+score reflects one click CLI, a FastAPI HTTP surface
+and the MCP tools published from that same app, all behind the same
+function signatures; its **config loader** delegates to
 `os-helper` (JSON / YAML / env / .env). `Rclone` earns a strong config
 score for its own config format and a REST surface via `rclone rcd`,
 but as a Go binary it is heavier to install and awkward to drive from
@@ -88,3 +98,55 @@ Python.
   underlying transport.
 - **`Rclone` / `lftp`**: you need production-grade multi-backend
   sync / replication, and calling out to a binary is acceptable.
+
+## Sources and as-of date
+
+**As of 27 October 2026.** Nothing here was benchmarked: this is a
+fit-to-one-job comparison, and the stars are judgements. What *can* rot
+is the factual half — release dates and documented defaults for other
+people's software — so that is what this section pins down.
+
+Release data, read from each project's PyPI JSON API
+(`https://pypi.org/pypi/<name>/json`) on the date above:
+
+| Project | Latest release | Published |
+| --- | --- | --- |
+| paramiko | 5.1.0 | 2026-10-18 |
+| smart-open | 8.0.4 | 2026-10-17 |
+| asyncssh | 2.24.1 | 2026-10-04 |
+| Fabric | 3.2.3 | 2026-04-06 |
+| PyFilesystem2 (`fs`) | 2.4.16 | 2022-05-02 |
+| pysftp | 0.2.9 | 2016-07-06 |
+
+`Rclone` is not a Python package: v1.75.2, published 2026-10-09, from the
+GitHub releases API. `lftp` ships through distribution packages only and
+no release date was checked for it, which makes its **maintenance
+status** cell the weakest-sourced one in the table — read that one as an
+impression rather than a measurement.
+
+Documented behaviour, from each project's own reference:
+
+- [asyncssh `connect()`](https://asyncssh.readthedocs.io/en/latest/api.html) —
+  "If this is not specified, the keys will be looked up in the file
+  .ssh/known_hosts. If this is explicitly set to `None`, server host key
+  validation will be disabled."
+- [paramiko `SSHClient`](https://docs.paramiko.org/en/latest/api/client.html) —
+  `RejectPolicy` is the default missing-host-key policy, and a host key
+  counts as known only once `load_system_host_keys()` or
+  `load_host_keys()` has loaded it. The "zero keys at construction"
+  detail was checked against the installed paramiko 3.5.1, not just read.
+- [rclone's SFTP backend](https://rclone.org/sftp/) — "Optional path to
+  known_hosts file. Set this value to enable server host key validation",
+  and the warning "No host key validation is being performed" it emits
+  each time the backend starts without one.
+
+`sftp-helper`'s own claims are checkable in this repository rather than
+cited: `_ssh_options` in `sftp_helper/main.py` for the
+`StrictHostKeyChecking=yes` that has no opt-out, `sftp_helper/cli.py` and
+`sftp_helper/api.py` for the surfaces, `CHANGELOG.md` for the history.
+
+The stars themselves are generated from `assets/landscape.csv`, which is
+the source of truth for both the table above and the positioning figure.
+A library built for a different job (enterprise transfer orchestration, a
+GUI client, multi-backend replication) scores low here without that being
+a defect — see the preamble.

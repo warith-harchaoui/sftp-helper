@@ -26,7 +26,7 @@ local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
 
-**Éprouvé en production.** Treize versions publiées, une intégration continue
+**Éprouvé en production.** Dix-huit versions publiées, une intégration continue
 verte à chaque envoi (tests unitaires et lint qui bloquent la fusion au même
 titre qu'un test qui échoue) et une revue de sécurité dédiée (v3.2.1) qui a
 fermé une brèche d'injection de chemin dans le constructeur de commandes
@@ -212,7 +212,12 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub votre-login@sftp.example.com   # macOS / Ub
 type $HOME\.ssh\id_ed25519.pub | ssh votre-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"  # Windows
 ```
 
-## Utilisation
+## Prise en main rapide
+
+Pour le catalogue complet des recettes (envois, téléchargements, vérifications
+d'existence, création récursive de répertoires, fichiers distants temporaires à
+nettoyage automatique, vérification stricte de la clé d'hôte), voir
+[📋 EXEMPLES.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXEMPLES.md).
 
 Voici un exemple d'utilisation de SFTP Helper (**ne fonctionnera pas sans un `path/to/settings.yaml` valide**) :
 

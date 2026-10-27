@@ -1,34 +1,32 @@
 # SFTP Helper Examples
 
-Practical recipes for `sftp-helper`. Every snippet assumes:
+[🇫🇷 EXEMPLES.md](https://github.com/warith-harchaoui/sftp-helper/blob/main/EXEMPLES.md) · 🇬🇧 English
 
-```python
-import sftp_helper as sftph
-import os_helper as osh
-```
-
-and that you have written your credentials to `path/to/settings.yaml`
-(or YAML, or `.env`, or environment variables; see the README for the
-required keys).
+Practical recipes for `sftp-helper`, each one a scenario rather than a
+function listing. Everything past [Setup](#setup) assumes the imports and the
+`cred` dict that section establishes.
 
 ---
 
 ## Table of Contents
 
-1. [Setup](#setup)
-2. [Load credentials](#load-credentials)
-3. [Upload / download / delete](#upload--download--delete)
-4. [Existence checks](#existence-checks)
-5. [Create remote directories](#create-remote-directories)
-6. [Temporary remote files (auto-cleanup)](#temporary-remote-files-auto-cleanup)
-7. [Strict host-key verification](#strict-host-key-verification)
-8. [Combining with bucket-helper / os-helper](#combining-with-bucket-helper--os-helper)
+[Setup](#setup) · [Command line](#command-line) · [Troubleshooting](#troubleshooting)
+
+1. [Load credentials](#1-load-credentials)
+2. [Upload / download / delete](#2-upload--download--delete)
+3. [Existence checks](#3-existence-checks)
+4. [Create remote directories](#4-create-remote-directories)
+5. [Temporary remote files (auto-cleanup)](#5-temporary-remote-files-auto-cleanup)
+6. [Listing and stat](#6-listing-and-stat)
+7. [Path helpers (no server needed)](#7-path-helpers-no-server-needed)
+8. [Strict host-key verification](#8-strict-host-key-verification)
+9. [Combining with bucket-helper / os-helper](#9-combining-with-bucket-helper--os-helper)
 
 ---
 
 ## Setup
 
-Install with pip (pin the version you want):
+Install from PyPI:
 
 ```bash
 pip install --force-reinstall --no-cache-dir \
@@ -40,7 +38,18 @@ most Linux distributions, and Windows 10 1809+ / Server 2019+; if `sftp` is
 not on your `PATH`, install your platform's `openssh-client` package (on
 Windows, enable the "OpenSSH Client" optional feature).
 
-## Load credentials
+Every snippet below starts from these two imports:
+
+```python
+import sftp_helper as sftph
+import os_helper as osh
+```
+
+and, except in [§7](#7-path-helpers-no-server-needed), from a `cred` dict
+built by [§1](#1-load-credentials) — so a section can be read on its own
+without hunting for what `sftph` and `cred` were bound to.
+
+## 1. Load credentials
 
 `credentials(...)` returns a dict assembled from JSON / YAML / `.env` /
 environment variables. The fallback order is dictated by
@@ -91,7 +100,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub your-login@sftp.example.com
 type $HOME\.ssh\id_ed25519.pub | ssh your-login@sftp.example.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 ```
 
-## Upload / download / delete
+## 2. Upload / download / delete
 
 ```python
 # Upload a local file. If sftp_address is empty, sftp-helper builds a
@@ -110,7 +119,59 @@ sftph.download("/inbox/report.pdf", cred, "local_copy.pdf")
 sftph.delete("/inbox/report.pdf", cred)
 ```
 
-## Existence checks
+Both directions are resumable, retried with exponential backoff, and atomic:
+an upload lands in a temp remote path and is renamed onto its destination
+only once its size matches, while a download lands in a `<local_path>.part`
+sidecar and is `os.replace`-d only once verified. A caller never observes a
+half-written file. Pass `sha256=` to `download` to content-verify on top of
+the size check:
+
+```python
+sftph.download("/inbox/report.pdf", cred, "report.pdf", sha256="e3b0c442...")
+```
+
+`overwrite=False` turns a repeat call into an incremental sync (skip what is
+already there with a matching size), `resume=False` discards a stale partial
+instead of continuing it, and `progress=False` suppresses the bar even on a
+terminal:
+
+```python
+sftph.upload("report.pdf", cred, "/inbox/report.pdf", overwrite=False, progress=False)
+```
+
+A **directory** goes through the same two calls. `sftp_address` is then
+required — there is no single file to hash a default name from — and names
+the destination directory:
+
+```python
+sftph.upload("./renders", cred, "/inbox/renders")  # every non-hidden file, recursively
+sftph.download("/inbox/renders", cred, "./renders_copy")
+```
+
+Omitting the destination for a directory is the one argument mistake worth
+knowing by heart:
+
+```python
+sftph.upload("./renders", cred, "")
+# ValueError: sftp_address is required when uploading a folder (there is no
+# single file to derive a content-hashed default from).
+```
+
+For an explicit batch with per-file destinations, call `upload_many` /
+`download_many` directly. On a server that also accepts `ssh` exec they
+collapse the batch into one `tar.gz` transfer plus one remote extraction
+instead of one round trip per file; elsewhere they fall back to the per-file
+loop, unaffected:
+
+```python
+sent = sftph.upload_many(
+    [("a.png", "/inbox/img/a.png"), ("b.png", "/inbox/img/b.png")],
+    cred,
+)
+# {"a.png": "/inbox/img/a.png", "b.png": "/inbox/img/b.png"}
+```
+
+## 3. Existence checks
 
 ```python
 if sftph.remote_file_exists("/inbox/report.pdf", cred):
@@ -122,7 +183,7 @@ if sftph.remote_dir_exist("/inbox/", cred):
     # inbox directory is ready
 ```
 
-## Create remote directories
+## 4. Create remote directories
 
 `make_remote_directory(path, cred)` is recursive: it walks each
 intermediate level and creates the missing ones.
@@ -131,7 +192,7 @@ intermediate level and creates the missing ones.
 sftph.make_remote_directory("/inbox/2026-06/raw", cred)
 ```
 
-## Temporary remote files (auto-cleanup)
+## 5. Temporary remote files (auto-cleanup)
 
 `remote_tempfile(...)` reserves a unique random remote path and deletes
 it automatically on block exit, even if an exception is raised.
@@ -143,7 +204,7 @@ with sftph.remote_tempfile(cred, ext="json") as (sftp_address, url):
 
     # Hand the URL to a downstream consumer (webhook, transcoder, ...).
     assert osh.is_working_url(url), f"URL not live: {url}"
-    notify_downstream(url)
+    print(f"ready for the downstream consumer: {url}")
 # At this point, the remote file is gone.
 ```
 
@@ -153,10 +214,78 @@ sub-folder of `cred["sftp_destination_path"]`:
 ```python
 with sftph.remote_tempfile(cred, ext="mp4", subdir="renders/2026") as (addr, url):
     sftph.upload("clip.mp4", cred, addr)
-    queue_for_transcoding(url)
+    print(f"queue this for transcoding: {url}")
 ```
 
-## Strict host-key verification
+## 6. Listing and stat
+
+Before deciding what to transfer, ask the server what it already holds.
+`list_dir` returns the immediate entries, or relative paths through the whole
+tree with `recursive=True`:
+
+```python
+sftph.list_dir("/inbox", cred)
+# ['2026-06', 'readme.txt']
+
+sftph.list_dir("/inbox", cred, recursive=True)
+# ['readme.txt', '2026-06/report.pdf']
+```
+
+`remote_stat` gives one file's size and mtime, or `None` when the path is
+absent (or is a directory — this is a file stat):
+
+```python
+info = sftph.remote_stat("/inbox/readme.txt", cred)
+if info is not None:
+    print(info["size"], info["mtime"].isoformat())
+```
+
+`mtime` is parsed from the server's `ls -l` line, so it has minute
+resolution and carries no timezone: good enough for "is my local copy
+newer", not for anything needing seconds.
+
+`list_dir_stat` is the bulk form — one walk, one `{relative_path: {"size",
+"mtime"}}` map for the whole tree — so a sync decision needs no per-file
+round trip:
+
+```python
+remote = sftph.list_dir_stat("/inbox", cred)
+empty = [path for path, meta in remote.items() if meta["size"] == 0]
+```
+
+## 7. Path helpers (no server needed)
+
+`normalize_path` and `strip_sftp_path` are pure functions needing no
+connection, so these are the snippets you can run straight after installing.
+`normalize_path` gives a remote path its canonical form — one leading `/`,
+no trailing one:
+
+```python
+>>> sftph.normalize_path("uploads/reports///")
+'/uploads/reports'
+```
+
+`strip_sftp_path` is the inverse of writing a full address: it drops the
+scheme and the host, reading only `cred["sftp_host"]`, and is idempotent on
+a path that is already bare:
+
+```python
+>>> sftph.strip_sftp_path("sftp://sftp.example.com/inbox/report.pdf",
+...                       {"sftp_host": "sftp.example.com"})
+'/inbox/report.pdf'
+```
+
+`normalize_path` is also the package's injection guard. Every function that
+accepts a remote path funnels through it, and it rejects a path that could
+break out of an `sftp -b` batch command's quoting:
+
+```python
+>>> sftph.normalize_path('/inbox/"; rm -rf /')
+Traceback (most recent call last):
+ValueError: Unsafe remote path (contains a newline, NUL byte, or double quote, any of which could break out of an sftp/ssh command string): '/inbox/"; rm -rf /'
+```
+
+## 8. Strict host-key verification
 
 `sftp-helper` never disables host-key verification. Every `sftp` call
 passes `StrictHostKeyChecking=yes` and `~/.ssh/known_hosts` is consulted
@@ -170,11 +299,14 @@ cred["sftp_known_hosts"] = "/etc/ssh/known_hosts.d/inbox-prod"
 sftph.upload("payload.json", cred, "/inbox/payload.json")
 ```
 
+That store is *added* to the default ones rather than replacing them, so
+hosts you already trust keep working.
+
 If you connect to a host whose key is not in any consulted store, the
 `sftp` connection is refused and the operation raises. There is no
 opt-out flag by design.
 
-## Combining with bucket-helper / os-helper
+## 9. Combining with bucket-helper / os-helper
 
 A common pipeline: write a file locally, push it to S3 (long-term
 storage), then mirror to an SFTP partner inbox (one-shot consumer):
@@ -197,3 +329,108 @@ sftph.upload("monthly_report.pdf", sftp_cred, "/inbox/2026-06.pdf")
 print(f"Archived at {s3_uri}; delivered to SFTP partner.")
 # Archived at s3://my-bucket/reports/2026-06.pdf; delivered to SFTP partner.
 ```
+
+## Command line
+
+One click CLI, `sftp-helper`, covering twelve subcommands. Every one that
+touches the server takes `--config` (a JSON/YAML file or a directory holding
+one; omit it to fall back to `.env` / `SFTP_*` environment variables):
+
+```bash
+sftp-helper upload           --config settings.yaml --input local.txt --remote /inbox/local.txt
+sftp-helper upload           --config settings.yaml --input ./renders --remote /inbox/renders
+sftp-helper download         --config settings.yaml --remote /inbox/local.txt --output out.txt
+sftp-helper delete           --config settings.yaml --remote /inbox/local.txt
+sftp-helper exists           --config settings.yaml --remote /inbox/local.txt
+sftp-helper dir-exists       --config settings.yaml --remote /inbox
+sftp-helper list             --config settings.yaml --remote /inbox --recursive
+sftp-helper remote-stat      --config settings.yaml --remote /inbox/local.txt
+sftp-helper mkdir            --config settings.yaml --remote /inbox/a/b/c
+sftp-helper strip-path       --config settings.yaml --address sftp://sftp.example.com/inbox/local.txt
+sftp-helper tempfile         --config settings.yaml --ext json --subdir renders/2026
+sftp-helper show-credentials --config settings.yaml
+sftp-helper normalize-path   --path "uploads/reports///"
+```
+
+`normalize-path` is the one subcommand needing neither a server nor a
+config, which makes it the quickest way to prove an install works:
+
+```console
+$ sftp-helper normalize-path --path "uploads/reports///"
+/uploads/reports
+```
+
+`upload` and `download` also take `--no-overwrite` (skip destinations
+already present with a matching size), `--no-resume` (discard a stale
+partial instead of continuing it) and `--no-progress`.
+
+Exit codes carry the answer where there is one to carry: `exists` and
+`dir-exists` print `true` and exit 0, or print `false` and exit 1;
+`remote-stat` prints JSON, or `null` and exits 1 when the path is absent. So
+a shell `if` needs no output parsing:
+
+```bash
+if sftp-helper exists --config settings.yaml --remote /inbox/local.txt; then
+    sftp-helper download --config settings.yaml --remote /inbox/local.txt
+fi
+```
+
+`show-credentials` prints the resolved config as JSON with `sftp_passwd`
+replaced by `***`. `-h` / `--help` works on the group and on every
+subcommand; `-V` / `--version` prints the installed version.
+
+## Troubleshooting
+
+**`The OpenSSH 'sftp' client was not found on PATH.`** — `sftp-helper` drives
+the system client rather than an in-process SSH library, so it needs the
+binary. The error names the install command for your OS (`apt` / `dnf` /
+`pacman` on Linux, Homebrew on macOS, the "OpenSSH Client" optional feature
+on Windows). It is checked up front, before any connection is attempted.
+
+**`Missing required keys for 'SFTP' configuration in files, .env files, or
+environment variables.`** — only three keys are required: `sftp_host`,
+`sftp_login`, `sftp_https`. Either pass `--config` / `credentials(path)`
+explicitly, or export `SFTP_HOST` / `SFTP_LOGIN` / `SFTP_HTTPS`. Run
+`sftp-helper show-credentials` to see exactly what got resolved, password
+masked.
+
+**`Host key verification failed`** — expected, and not a bug to work around:
+`StrictHostKeyChecking=yes` is passed on every invocation and no flag
+disables it. Record the server's key first, the ordinary way:
+
+```bash
+ssh your-login@sftp.example.com    # accept the fingerprint once, interactively
+# or, non-interactively:
+ssh-keyscan -t ed25519 sftp.example.com >> ~/.ssh/known_hosts
+```
+
+If the key has to live somewhere else, set `sftp_known_hosts` — see
+[§8](#8-strict-host-key-verification).
+
+**`sftp_passwd is set but the 'sshpass' helper is not installed.`** — OpenSSH
+refuses to read a password from the command line, so password auth needs the
+`sshpass` shim, which has no native Windows build. The fix that works
+everywhere is to stop using a password: set `sftp_key` (or load your key into
+the SSH agent) and leave `sftp_passwd` empty.
+
+**A transfer that hangs** — `ConnectTimeout=30` only bounds *reaching* the
+host; a session that connects and then goes quiet is bounded by
+`ServerAliveInterval=15` with `ServerAliveCountMax=4`, about a minute. Both
+are tunable, and connection multiplexing makes this matter more than it would
+in a one-shot client: a wedged master connection hangs every later call that
+attaches to its control socket.
+
+```bash
+export SFTP_HELPER_SERVER_ALIVE_INTERVAL=30   # seconds; 0 disables keepalives
+export SFTP_HELPER_SERVER_ALIVE_COUNT_MAX=4   # unanswered probes before giving up
+```
+
+**`ValueError: Unsafe remote path ...`** — a newline, carriage return, NUL
+byte or double quote in a remote path is rejected rather than quoted, because
+any of them can break out of an `sftp -b` batch command. See
+[§7](#7-path-helpers-no-server-needed).
+
+**An upload that failed and left something behind** — that is deliberate. The
+partial sits at a temp remote path ending in `.sftp-helper-upload`, so the
+next `upload` to the same destination resumes instead of restarting. Pass
+`resume=False` (or `--no-resume`) to discard it.
