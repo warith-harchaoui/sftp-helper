@@ -80,6 +80,10 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 - Trigger catalogue in
   [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
+## How it works
+
+![How sftp-helper works: the system OpenSSH client, wrapped so a directory does not cost a thousand round-trips](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/diagrams/how-it-works.png)
+
 ## Installation
 
 **Prerequisites**: **Python 3.10–3.13** and **git**, cross-platform:

@@ -86,6 +86,10 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
+## Comment ça marche
+
+![Comment sftp-helper fonctionne : le client OpenSSH du système, emballé pour qu'un dossier ne coûte pas mille allers-retours](https://raw.githubusercontent.com/warith-harchaoui/sftp-helper/main/assets/diagrams/comment-ca-marche.png)
+
 ## Installation
 
 **Prérequis** : **Python 3.10–3.13** et **git**, multiplateforme :
