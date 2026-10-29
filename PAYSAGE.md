@@ -162,3 +162,15 @@ positionnement. Une bibliothèque conçue pour un autre métier
 (orchestration de transferts en entreprise, client graphique,
 réplication multi-backend) y obtient une note basse sans que ce soit un
 défaut : voir le préambule.
+
+## Idées à reprendre
+
+Étudié plutôt que deviné : ce que chaque voisin fait mieux, puis ce que cette bibliothèque devrait changer pour l'égaler. Rien ici n'est un engagement : c'est la liste de lecture dont part la version suivante.
+
+- **`pysftp` est mort, puis le tableau devrait le dire** — Dernière publication en 2016, non maintenu, puis toujours incapable d'utiliser des clés Ed25519 ou ECDSA alors que le paramiko qu'il enveloppe le sait. C'est le premier résultat que les gens trouvent puis le pire choix qu'ils puissent faire ; le nommer franchement sert plus qu'une note en étoiles.
+
+- **`asyncssh` — rapide, puis bloqué par sa licence pour beaucoup d'appelants** — C'est la meilleure option asynchrone, mais elle est publiée sous EPL, qui ne se combine ni avec une distribution GPL ni avec une BSD. Pour une suite en BSD-3 c'est un arrêt net ; cela relève de la comparaison comme un fait de licence plutôt que de performance.
+
+- **`sshfs` — fsspec au-dessus d'asyncssh, nettement plus rapide que paramiko** — Là où la licence le permet, l'écart de débit est assez grand pour compter sur du transfert en masse. À mesurer ici avant de supposer que la vitesse de paramiko est le plafond.
+
+- **`Rclone` — reprendre, vérifier, puis limiter la bande passante** — Une vérification par empreinte après transfert, des envois partiels reprenables puis un plafond de débit sont les trois choses qu'un exploitant réclame la première fois qu'un transfert échoue à 90 % sur un lien partagé.

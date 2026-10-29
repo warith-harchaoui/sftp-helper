@@ -150,3 +150,15 @@ the source of truth for both the table above and the positioning figure.
 A library built for a different job (enterprise transfer orchestration, a
 GUI client, multi-backend replication) scores low here without that being
 a defect — see the preamble.
+
+## Ideas worth stealing
+
+Researched rather than guessed: what each neighbour does better, and what this library would have to change to match it. Nothing here is a commitment — it is the reading list the next version starts from.
+
+- **`pysftp` is dead, and the table should say so** — Last released in 2016, unmaintained, and it still cannot use Ed25519 or ECDSA keys even though the paramiko it wraps can. It is the first result people find and the worst choice they can make; naming that plainly is more useful than a star rating.
+
+- **`asyncssh` — fast, and licence-blocked for many callers** — It is the strongest async option, but it ships under the EPL, which does not combine with GPL or BSD distribution. For a BSD-3 suite that is a hard stop, and it belongs in the comparison as a licence fact rather than a performance one.
+
+- **`sshfs` — fsspec over asyncssh, and notably quicker than paramiko** — Where the licence allows it, the throughput difference is large enough to matter for bulk transfer. Worth measuring here before assuming paramiko's speed is the ceiling.
+
+- **`Rclone` — resume, verify, and limit the bandwidth** — Checksummed verification after transfer, resumable partial uploads and a bandwidth cap are the three things an operator asks for the first time a transfer fails at 90% on a shared link.
