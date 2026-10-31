@@ -46,16 +46,10 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 
 ## Features
 
-- **Upload** a local file **or directory** to the server. Pass an explicit
-  `sftp://host/path`, or omit it (single file only) to get a deterministic
-  **content-hashed** name under `sftp_destination_path` (identical bytes
-  de-duplicate to the same path). A directory is sent via `upload_many`,
-  which packs-and-ships as one `tar.gz` archive (one `put` + one remote
-  `tar` extraction) whenever the server accepts exec, instead of one round
-  trip per file.
-  `overwrite`/`resume`/`progress` knobs: skip destinations already present
-  with a matching size (incremental sync), discard a stale partial transfer,
-  or suppress the progress bar.
+- **Upload** a local file **or directory** to the server.
+  - **Destination.** Pass an explicit `sftp://host/path`, or omit it (single file only) to get a deterministic **content-hashed** name under `sftp_destination_path` — identical bytes de-duplicate to the same path.
+  - **Directories travel as one stream.** `upload_many` packs and ships a single `tar.gz` (one `put` plus one remote `tar` extraction) whenever the server accepts exec, instead of one round trip per file.
+  - **Knobs.** `overwrite` skips destinations already present with a matching size (incremental sync), `resume` discards a stale partial transfer, `progress` suppresses the progress bar.
 - **Download** a remote file **or directory** to disk (defaults to the remote
   basename for a single file), archive-accelerated the same way via
   `download_many`, with the same `overwrite`/`resume`/`progress` knobs.

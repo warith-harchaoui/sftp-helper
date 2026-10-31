@@ -30,13 +30,11 @@ local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
 
-**Éprouvé en production.** Dix-huit versions publiées, une intégration continue
-verte à chaque envoi (tests unitaires et lint qui bloquent la fusion au même
-titre qu'un test qui échoue) et une revue de sécurité dédiée (v3.2.1) qui a
-fermé une brèche d'injection de chemin dans le constructeur de commandes
-batch avant qu'elle n'atteigne un seul utilisateur. Rien ici n'est promis
-sans preuve à l'appui : ces chiffres viennent directement des tags du dépôt
-et de son `CHANGELOG.md`, pas d'un argument commercial.
+**Éprouvé en production.** Dix-huit versions publiées, une intégration continue verte à chaque envoi — tests unitaires puis lint bloquent la fusion au même titre qu'un test qui échoue.
+
+S'y ajoute une revue de sécurité dédiée (v3.2.1), qui a fermé une brèche d'injection de chemin dans le constructeur de commandes batch avant qu'elle n'atteigne un seul utilisateur.
+
+Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement des tags du dépôt puis de son `CHANGELOG.md`, pas d'un argument commercial.
 
 ## Documentation
 
@@ -48,17 +46,10 @@ et de son `CHANGELOG.md`, pas d'un argument commercial.
 
 ## Fonctionnalités
 
-- **Upload** d'un fichier local **ou d'un répertoire** vers le serveur. Donnez
-  une adresse `sftp://host/path` explicite ou omettez-la (fichier seul) pour
-  obtenir un nom **haché sur le contenu** sous `sftp_destination_path` (des
-  octets identiques se dédupliquent vers le même chemin). Un répertoire passe
-  par `upload_many`, qui empaquette puis expédie en une seule archive
-  `tar.gz` (un `put` + une extraction `tar` distante) dès que le serveur
-  accepte l'exécution, au lieu d'un aller-retour par fichier. Options
-  `overwrite`/`resume`/`progress` : ignorer
-  les destinations déjà présentes avec la même taille (synchronisation
-  incrémentale), abandonner un transfert partiel périmé ou masquer la barre
-  de progression.
+- **Upload** d'un fichier local **ou d'un répertoire** vers le serveur.
+  - **Destination.** Donnez une adresse `sftp://host/path` explicite. Omettez-la (fichier seul) pour obtenir un nom **haché sur le contenu** sous `sftp_destination_path` — des octets identiques se dédupliquent vers le même chemin.
+  - **Un répertoire voyage en un seul flux.** `upload_many` empaquette puis expédie une archive `tar.gz` unique (un `put` plus une extraction `tar` distante) dès que le serveur accepte l'exécution, au lieu d'un aller-retour par fichier.
+  - **Options.** `overwrite` ignore les destinations déjà présentes avec la même taille (synchronisation incrémentale), `resume` abandonne un transfert partiel périmé, `progress` masque la barre de progression.
 - **Download** d'un fichier **ou d'un répertoire** distant vers le disque (par
   défaut le nom de base distant pour un fichier seul), accéléré par archive de
   la même façon via `download_many`, avec les mêmes options `overwrite`/
