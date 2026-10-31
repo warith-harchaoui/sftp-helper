@@ -31,7 +31,7 @@ dependencies = [
     # package has, so the dependency cannot be optional either. It used to
     # sit in the [cli] extra beside an always-available argparse CLI.
     "click>=8.1,<9",
-    "os-helper>=2.9.1,<4",
+    "os-helper>=2.9.1,<5",
 ]
 
 [project.optional-dependencies]
