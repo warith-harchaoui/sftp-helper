@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.1] - 2026-11-01
+
+### Fixed
+
+- **The published metadata capped `os-helper<4`, so nobody installing from the
+  index could reach 4.0.0.** The ceiling was raised in this repository on
+  2026-10-31, but a wheel's `Requires-Dist` is frozen at upload: until this
+  release a fresh resolve still pulled os-helper 3.1.0 and the raised ceiling
+  reached no installer at all. This release is what carries the `<5` to the
+  index. The single call here, in `main.py`, hashes a path `osh.checkfile` has already
+  proven present, so the stricter contract cannot reach it.
+
 ## [3.6.0] - 2026-10-25
 
 ### Changed
