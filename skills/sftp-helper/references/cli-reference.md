@@ -17,8 +17,10 @@ a JSON / YAML config file, a `.env`, then environment variables.
 | `sftp_login` | yes | username |
 | `sftp_https` | yes | base public URL used to build published URLs |
 | `sftp_passwd` | no | password (omit when using a key) |
-| `sftp_key` | no | private-key path |
+| `sftp_key` | no | key path: the public key when an SSH agent holds the private one, else the private key |
 | `sftp_destination_path` | no | write root, default `/` |
+| `sftp_port` | no | SSH port, default `22` |
+| `sftp_known_hosts` | no | extra known_hosts file; host-key checking is always on |
 
 A key-based login writing to the server root needs only the three required
 fields. Start from the repo's `settings.yaml.example`.
@@ -33,13 +35,21 @@ stable so scripts can read it — but never echo a real secret anywhere.
 ## Transfer
 
 ```bash
-sftp-helper upload   --config PATH --input LOCAL  --remote REMOTE
-sftp-helper download --config PATH --remote REMOTE --output LOCAL
+sftp-helper upload   --config PATH --input LOCAL  [--remote REMOTE] [--no-overwrite] [--no-resume] [--no-progress]
+sftp-helper download --config PATH --remote REMOTE [--output LOCAL] [--no-overwrite] [--no-resume] [--no-progress]
 ```
 
-`upload` prints the public URL built from `sftp_https` — that URL is the
-result worth reporting. An upload to an existing path **overwrites it**; run
-`exists` first when that is a possibility.
+Both take a file or a whole directory (a directory upload needs `--remote`).
+`upload` prints the remote address it wrote (the `sftp://` address or plain
+path it was given, or one under `sftp_destination_path` named from the file's hash when
+`--remote` is omitted); for a public `https://` link, use `tempfile`, which
+builds it from `sftp_https`. `download` without `--output` writes the remote
+basename into the current directory.
+
+An upload to an existing path **overwrites it** by default; `--no-overwrite`
+skips destinations already present with the same size (an incremental sync),
+`--no-resume` discards a stale partial transfer instead of continuing it, and
+`--no-progress` silences the bar.
 
 For several files, use the library's `upload_many` / `download_many`: they
 reuse one authenticated connection instead of paying the handshake per file.
@@ -49,12 +59,13 @@ reuse one authenticated connection instead of paying the handshake per file.
 ```bash
 sftp-helper exists      --config PATH --remote REMOTE
 sftp-helper dir-exists  --config PATH --remote REMOTE
-sftp-helper list        --config PATH --remote REMOTE_DIR
+sftp-helper list        --config PATH --remote REMOTE_DIR [--recursive]
 sftp-helper remote-stat --config PATH --remote REMOTE
 ```
 
 `remote-stat` gives size and mtime — use it to decide whether a re-upload is
-needed at all.
+needed at all. `list --recursive` walks sub-directories too, with paths
+relative to `--remote`.
 
 ## Mutation — confirm with the user first
 
@@ -74,19 +85,29 @@ sftp-helper normalize-path --path //foo/bar/
 sftp-helper strip-path     --config PATH --address sftp://host/foo/bar
 ```
 
-`tempfile` mints a collision-free remote path for pipeline intermediates.
+`tempfile` mints a collision-free remote path for pipeline intermediates and
+prints `{"sftp_address": ..., "url": ...}`, the URL built from `sftp_https`;
+it uploads nothing.
 `normalize-path` collapses double and trailing slashes. `strip-path` turns an
 `sftp://host/...` address into the server-relative path. Use them instead of
 string surgery.
 
 ## Output contract
 
-- `upload` prints the public URL; `download` prints the local path written.
-- `exists` / `dir-exists` print `true` / `false` and exit `0` either way; a
-  genuine failure (auth, unreachable host) exits non-zero.
-- `list` prints one entry per line; `remote-stat` prints size and mtime.
-- Failures are logged through `os_helper` and exit non-zero; a partial
-  download is removed rather than left behind.
+- `upload` prints the remote address written; `download` prints the local
+  path written.
+- `exists` / `dir-exists` print `true` and exit `0`, or print `false` and exit
+  `1`, so they work in a shell `if`. A genuine failure (auth, unreachable
+  host) prints one `Error: ...` line and exits `1` too: read the output, not
+  only the exit code.
+- `list` prints one entry per line; `remote-stat` prints
+  `{"size": ..., "mtime": ...}` as JSON, or `null` with exit `1` when the path
+  is absent.
+- `delete` prints nothing and succeeds on an absent file; `mkdir` prints the
+  directory it made.
+- Failures exit non-zero. A failed download keeps its `.part` file and a
+  failed upload its temporary remote file, so the next identical call resumes
+  where the transfer stopped (unless `--no-resume`).
 
 ## When a call fails
 

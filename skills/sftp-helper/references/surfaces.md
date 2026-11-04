@@ -13,14 +13,16 @@ Public API (`sftp_helper.__all__`): `credentials`, `get_client_sftp`,
 `remote_stat`.
 
 ```python
-url = sh.upload("./site.html", "/www/site.html")  # → public URL
-sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")])  # one connection, many files
+cred = sh.credentials("settings.yaml")
+addr = sh.upload("./site.html", cred, "/www/site.html")  # → the remote address written
+# one connection, many files
+sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
 ```
 
-`credentials()` returns the resolved config dict and `get_client_sftp()` the
-underlying paramiko client — reach for the client only when you need an SFTP
-operation this package does not wrap, and keep the credential resolution path
-intact rather than building a connection by hand.
+`credentials()` returns the resolved config dict. Every operation drives the
+system OpenSSH `sftp` client as a short batch, so there is no client object to
+hand out: `get_client_sftp()` is a deprecated shim that checks the connection
+and yields the same `cred` dict, kept so older `with` call sites still import.
 
 Logging and file management route through `os_helper` — the suite convention.
 
@@ -32,7 +34,8 @@ Logging and file management route through `os_helper` — the suite convention.
 
 ```bash
 pip install 'sftp-helper[api]'
-python -m sftp_helper.api           # 127.0.0.1:8000, OpenAPI docs at /docs
+SFTP_HELPER_CONFIG=$PWD/settings.yaml uvicorn sftp_helper.api:app --host 127.0.0.1 --port 8000
+# OpenAPI docs at /docs
 ```
 
 | Method | Route |

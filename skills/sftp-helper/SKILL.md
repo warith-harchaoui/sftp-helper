@@ -92,12 +92,15 @@ sftp-helper list   --config settings.yaml --remote /www
 ```python
 import sftp_helper as sh
 
-url = sh.upload("./site.html", "/www/site.html")  # public URL, from sftp_https
-sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")])
+cred = sh.credentials("settings.yaml")  # or None: environment only
+addr = sh.upload("./site.html", cred, "/www/site.html")  # the remote address written
+sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
 ```
 
-`upload` returns the public URL built from the configured `sftp_https` base —
-that URL, not the local path, is what you report back.
+`upload` returns the remote address it wrote, which is what you report back.
+Every function after `credentials` takes the resolved `cred` dict. A public
+`https://` link comes from `remote_tempfile`, the one call that builds it from
+`sftp_https`.
 
 For the full flag matrix, the config keys and the output contract, read
 `references/cli-reference.md`. For the HTTP API and MCP tools, read
