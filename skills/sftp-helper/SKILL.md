@@ -11,7 +11,7 @@ description: >-
   from the server", "does this remote file exist", "list the remote
   directory", "mkdir on the server", "delete this remote file", "publish this
   to my web host", "FTP this", or names `sftp-helper`,
-  `sftp-helper-mcp`, `import sftp_helper as sh`, `paramiko`, `sftp://`. Do NOT
+  `sftp-helper-mcp`, `import sftp_helper as sftph`, `paramiko`, `sftp://`. Do NOT
   use for S3-compatible object storage (bucket-helper), local file management
   (os-helper), or git / rsync workflows.
 license: BSD-3-Clause
@@ -90,11 +90,11 @@ sftp-helper list   --config settings.yaml --remote /www
 ```
 
 ```python
-import sftp_helper as sh
+import sftp_helper as sftph
 
-cred = sh.credentials("settings.yaml")  # or None: environment only
-addr = sh.upload("./site.html", cred, "/www/site.html")  # the remote address written
-sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
+cred = sftph.credentials("settings.yaml")  # or None: environment only
+addr = sftph.upload("./site.html", cred, "/www/site.html")  # the remote address written
+sftph.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
 ```
 
 `upload` returns the remote address it wrote, which is what you report back.

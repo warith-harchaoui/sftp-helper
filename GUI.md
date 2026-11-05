@@ -96,7 +96,8 @@ process using the same credential set. Bindings:
   small-multiples chart for the write-heatmaps. No React: matches
   the `sprezzature-ui` companion skill's stack.
 - Back end: the FastAPI app already exists (`sftp_helper.api`) and
-  covers 100 % of the operations. GUI is a client only.
+  covers every CLI operation (the batch `upload_many` / `download_many`
+  and `list_dir_stat` have no route yet). GUI is a client only.
 - Manifest format: JSON Lines, one artifact record per line, human
   diff-friendly for CI checks.
 

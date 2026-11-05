@@ -3,7 +3,7 @@
 ## 1. Library
 
 ```python
-import sftp_helper as sh
+import sftp_helper as sftph
 ```
 
 Public API (`sftp_helper.__all__`): `credentials`, `get_client_sftp`,
@@ -13,10 +13,10 @@ Public API (`sftp_helper.__all__`): `credentials`, `get_client_sftp`,
 `remote_stat`.
 
 ```python
-cred = sh.credentials("settings.yaml")
-addr = sh.upload("./site.html", cred, "/www/site.html")  # → the remote address written
+cred = sftph.credentials("settings.yaml")
+addr = sftph.upload("./site.html", cred, "/www/site.html")  # → the remote address written
 # one connection, many files
-sh.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
+sftph.upload_many([("./a.png", "/www/a.png"), ("./b.png", "/www/b.png")], cred)
 ```
 
 `credentials()` returns the resolved config dict. Every operation drives the

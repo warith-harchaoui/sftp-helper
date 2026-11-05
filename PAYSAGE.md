@@ -51,7 +51,7 @@ découverte des identifiants via `os-helper`, exposition multi-surface).
 Il ne cherche délibérément *pas* à concurrencer `Fabric` sur
 l'orchestration de tâches ni `Rclone` sur la réplication multi-backend,
 et il s'appuie sur le **client OpenSSH `sftp` du système**, il n'a donc
-aucune dépendance SSH Python (seulement `os-helper`) et s'authentifie
+aucune dépendance SSH Python (ses dépendances d'exécution sont `os-helper` et `click`) et s'authentifie
 exactement comme vos propres `ssh`/`sftp` (agent, `~/.ssh/config`, clés
 matérielles). On ne paie les surfaces FastAPI / MCP que si on installe
 leurs extras. Ce compromis est le principal différenciateur face à
@@ -171,6 +171,6 @@ défaut : voir le préambule.
 
 - **`asyncssh` — rapide, puis bloqué par sa licence pour beaucoup d'appelants** — C'est la meilleure option asynchrone, mais elle est publiée sous EPL, qui ne se combine ni avec une distribution GPL ni avec une BSD. Pour une suite en BSD-3 c'est un arrêt net ; cela relève de la comparaison comme un fait de licence plutôt que de performance.
 
-- **`sshfs` — fsspec au-dessus d'asyncssh, nettement plus rapide que paramiko** — Là où la licence le permet, l'écart de débit est assez grand pour compter sur du transfert en masse. À mesurer ici avant de supposer que la vitesse de paramiko est le plafond.
+- **`sshfs` — fsspec au-dessus d'asyncssh, nettement plus rapide que paramiko** — Là où la licence le permet, l'écart de débit est assez grand pour compter sur du transfert en masse. `sftp-helper` pilote le binaire OpenSSH plutôt que paramiko : la mesure utile ici oppose donc sshfs au `sftp` d'OpenSSH lui-même.
 
-- **`Rclone` — reprendre, vérifier, puis limiter la bande passante** — Une vérification par empreinte après transfert, des envois partiels reprenables puis un plafond de débit sont les trois choses qu'un exploitant réclame la première fois qu'un transfert échoue à 90 % sur un lien partagé.
+- **`Rclone` — reprendre, vérifier, puis limiter la bande passante** — Une vérification par empreinte après transfert, des envois partiels reprenables puis un plafond de débit sont les trois choses qu'un exploitant réclame la première fois qu'un transfert échoue à 90 % sur un lien partagé. Deux sont déjà livrées ici : `reput` / `reget` reprennent un transfert partiel, puis chaque transfert est vérifié en taille (`download` ajoute une vérification de contenu optionnelle par `sha256=`). Seul le plafond de débit manque encore.

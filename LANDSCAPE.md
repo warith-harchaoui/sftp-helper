@@ -48,7 +48,7 @@ flag, `os-helper`-based credential discovery, multi-surface exposure).
 It intentionally does *not* try to compete with `Fabric` on task
 orchestration or with `Rclone` on multi-backend replication, and it
 drives the **system OpenSSH `sftp` client**, so it has no Python SSH
-dependency at all (only `os-helper`), and authenticates exactly like
+dependency at all (its runtime dependencies are `os-helper` and `click`), and authenticates exactly like
 your own `ssh`/`sftp` (agent, `~/.ssh/config`, hardware tokens). You
 only pay for the FastAPI / MCP surfaces if you install their extras.
 That trade-off is the main differentiator against `pysftp` (whose last
@@ -159,6 +159,6 @@ Researched rather than guessed: what each neighbour does better, and what this l
 
 - **`asyncssh` — fast, and licence-blocked for many callers** — It is the strongest async option, but it ships under the EPL, which does not combine with GPL or BSD distribution. For a BSD-3 suite that is a hard stop, and it belongs in the comparison as a licence fact rather than a performance one.
 
-- **`sshfs` — fsspec over asyncssh, and notably quicker than paramiko** — Where the licence allows it, the throughput difference is large enough to matter for bulk transfer. Worth measuring here before assuming paramiko's speed is the ceiling.
+- **`sshfs` — fsspec over asyncssh, and notably quicker than paramiko** — Where the licence allows it, the throughput difference is large enough to matter for bulk transfer. `sftp-helper` drives the OpenSSH binary rather than paramiko, so the measurement worth running here is sshfs against OpenSSH's own `sftp`.
 
-- **`Rclone` — resume, verify, and limit the bandwidth** — Checksummed verification after transfer, resumable partial uploads and a bandwidth cap are the three things an operator asks for the first time a transfer fails at 90% on a shared link.
+- **`Rclone` — resume, verify, and limit the bandwidth** — Checksummed verification after transfer, resumable partial uploads and a bandwidth cap are the three things an operator asks for the first time a transfer fails at 90% on a shared link. Two already ship here: `reput` / `reget` resume a partial transfer, and every transfer is size-verified (`download` adds an optional `sha256=` content check). The bandwidth cap is the one still missing.

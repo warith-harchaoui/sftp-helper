@@ -91,15 +91,19 @@ Releases live in [`CHANGELOG.md`](CHANGELOG.md) following the
 release is tagged `vX.Y.Z` in git and published as a GitHub release.
 
 All AI Helpers suite members are published on PyPI. Cross-helper
-dependency pins (e.g. `os-helper>=2.0.0,<3`) are version ranges, not
+dependency pins (e.g. `os-helper>=2.9.1,<5`) are version ranges, not
 exact git tags.
 
 ## CI
 
 GitHub Actions runs `pytest` on a single pinned Python version
-(3.12, Linux) as a fast, fully blocking gate; the full multi-version
-sweep runs locally before every push. A separate `ruff` job blocks on
-both `ruff check` and `ruff format --check`. Integration tests are
+(3.12, Linux) as a fast, fully blocking gate; the full sweep (unit +
+integration) runs locally in the pre-push hook below. A separate `ruff`
+job blocks on both `ruff check` and `ruff format --check` (ruff pinned
+in the workflow). Two more jobs block too: `floor` checks that the
+package installs and imports on Python 3.10, the floor `requires-python`
+promises, and `no-vendor-mentions` rejects AI-vendor attribution in
+tracked files and commit messages. Integration tests are
 gated by `pytestmark = pytest.mark.integration` and skipped by
 default (`addopts = -m 'not integration'`).
 
@@ -127,8 +131,9 @@ through its real entry point (CLI subcommand, HTTP route, public library
 function) over a structural one that only inspects parser/schema wiring —
 it reaches more of the actual code and is worth more than several
 structural tests stacked on the same function. `tests/test_cli.py`'s
-`cli_driver` fixture is the pattern: one functional test runs against both
-CLI backends instead of being hand-duplicated per backend.
+`cli_driver` fixture is the pattern: it runs a command through the click
+CLI with `credentials` pre-patched, so each functional test drives the real
+argument handling without a server.
 
 ## Pre-push hook
 

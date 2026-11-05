@@ -14,7 +14,8 @@ An AI pipeline that produces files — a rendered video, a trained model, a batc
 
 This toolbox requires:
   - a `settings.yaml` for the sftp parameters (or JSON or environment variables or .env)
-  - that you previously added you SSH key of your local machine in the SFTP server
+  - that you previously added your local machine's SSH key to the SFTP server
+  - the OpenSSH `sftp` client on your `PATH` (it ships with macOS, most Linux distributions and Windows 10 1809+ / Server 2019+)
 
 [🌍 AI Helpers](https://deraison.ai/ai-helpers)
 
@@ -29,12 +30,12 @@ server, so it is deliberately **not** local-first and ships **no GUI**. For
 cloud object storage (S3 / GCS / Azure / MinIO) use `bucket-helper`; for
 downloading media from a URL use `youtube-helper`.
 
-**Battle-tested.** Eighteen tagged releases, a green CI on every push (unit
+**Battle-tested.** Eighteen releases published on PyPI, a green CI on every push (unit
 tests plus a linter that blocks the merge exactly like a failing test), and a
 dedicated security pass (v3.2.1) that closed a path-injection gap in the
 batch-command builder before it ever shipped to a user. Nothing here is
 promised without a check backing it: the numbers above come straight from
-this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
+PyPI's release history and this repository's `CHANGELOG.md`, not from a marketing claim.
 
 ## Documentation
 
@@ -49,7 +50,7 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 - **Upload** a local file **or directory** to the server.
   - **Destination.** Pass an explicit `sftp://host/path`, or omit it (single file only) to get a deterministic **content-hashed** name under `sftp_destination_path` — identical bytes de-duplicate to the same path.
   - **Directories travel as one stream.** `upload_many` packs and ships a single `tar.gz` (one `put` plus one remote `tar` extraction) whenever the server accepts exec, instead of one round trip per file.
-  - **Knobs.** `overwrite` skips destinations already present with a matching size (incremental sync), `resume` discards a stale partial transfer, `progress` suppresses the progress bar.
+  - **Knobs.** `overwrite=False` skips destinations already present with a matching size (incremental sync), `resume=False` discards a stale partial transfer instead of continuing it, `progress=False` suppresses the progress bar.
 - **Download** a remote file **or directory** to disk (defaults to the remote
   basename for a single file), archive-accelerated the same way via
   `download_many`, with the same `overwrite`/`resume`/`progress` knobs.
@@ -72,8 +73,9 @@ this repository's own tags and `CHANGELOG.md`, not from a marketing claim.
 - **Strict host-key verification, always on**: OpenSSH
   `StrictHostKeyChecking=yes`, no opt-out; trust an extra key via the optional
   `sftp_known_hosts` credential.
-- **Three surfaces, one behavior**: Python library, a click CLI
-  (`sftp-helper`), and a FastAPI HTTP surface. See the
+- **Four surfaces, one behavior**: Python library, a click CLI
+  (`sftp-helper`), a FastAPI HTTP surface, and MCP tools mounted on that same
+  app (`sftp-helper-mcp`). See the
   [multi-surface section](#multi-surface-exposure).
 - Trigger catalogue in
   [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
@@ -100,6 +102,7 @@ pip install sftp-helper
 
 # Optional surfaces
 pip install "sftp-helper[api]"       # FastAPI HTTP surface
+pip install "sftp-helper[mcp]"       # MCP tools on the same app (includes [api])
 ```
 
 ### From source (no PyPI)
@@ -111,6 +114,7 @@ pip install -e .
 
 # Optional surfaces
 pip install -e ".[api]"
+pip install -e ".[mcp]"
 ```
 
 ## Write your own configuration file
@@ -227,7 +231,7 @@ cred = sftph.credentials("path/to/settings.yaml")
 remote_file = cred["sftp_destination_path"] + "/" + local_file
 url = cred["sftp_https"] + "/" + local_file
 
-# upload() raises on failure and returns the destination URL on success.
+# upload() raises on failure and returns the remote address it wrote on success.
 sftph.upload(local_file, cred, remote_file)
 print(f"Uploaded {local_file} to {remote_file}")
 # Uploaded example.txt to /remote/base/path/example.txt
@@ -317,7 +321,7 @@ pip install "sftp-helper[mcp]"
 SFTP_HELPER_CONFIG=./settings.yaml sftp-helper-mcp
 ```
 
-Docker image (HTTP on port 8000):
+Docker image (HTTP + MCP on port 8000):
 
 ```bash
 docker build -t sftp-helper .
@@ -326,6 +330,11 @@ docker run --rm -p 8000:8000 \
   -e SFTP_HELPER_CONFIG=/app/settings.yaml \
   sftp-helper
 ```
+
+A container inherits neither your SSH agent nor your `~/.ssh/known_hosts`, so
+key-based login and host-key verification both need them mounted in:
+[`docker-compose.yml`](https://github.com/warith-harchaoui/sftp-helper/blob/main/docker-compose.yml)
+does both and explains each step in its comments (`docker compose up --build`).
 
 See [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md)
 for the exhaustive catalogue of phrasings, commands, and functions that invoke it

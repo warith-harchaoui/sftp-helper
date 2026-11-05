@@ -15,6 +15,7 @@ Un pipeline d'IA qui produit des fichiers — une vidéo rendue, un modèle entr
 Cette boîte à outils nécessite :
   - un fichier `settings.yaml` pour les paramètres SFTP (ou JSON ou variables d'environnement ou `.env`)
   - que vous ayez préalablement ajouté la clé SSH de votre machine locale sur le serveur SFTP
+  - le client OpenSSH `sftp` dans votre `PATH` (livré avec macOS, la plupart des distributions Linux puis Windows 10 1809+ / Server 2019+)
 
 [🌍 AI Helpers](https://deraison.ai/ai-helpers)
 
@@ -30,11 +31,11 @@ local-first et ne fournit **aucune interface graphique**. Pour du stockage objet
 cloud (S3 / GCS / Azure / MinIO) utilisez `bucket-helper` ; pour télécharger un
 média depuis une URL utilisez `youtube-helper`.
 
-**Éprouvé en production.** Dix-huit versions publiées, une intégration continue verte à chaque envoi — tests unitaires puis lint bloquent la fusion au même titre qu'un test qui échoue.
+**Éprouvé en production.** Dix-huit versions publiées sur PyPI, une intégration continue verte à chaque envoi — tests unitaires puis lint bloquent la fusion au même titre qu'un test qui échoue.
 
 S'y ajoute une revue de sécurité dédiée (v3.2.1), qui a fermé une brèche d'injection de chemin dans le constructeur de commandes batch avant qu'elle n'atteigne un seul utilisateur.
 
-Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement des tags du dépôt puis de son `CHANGELOG.md`, pas d'un argument commercial.
+Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement de l'historique des versions sur PyPI puis du `CHANGELOG.md` du dépôt, pas d'un argument commercial.
 
 ## Documentation
 
@@ -49,7 +50,7 @@ Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement
 - **Upload** d'un fichier local **ou d'un répertoire** vers le serveur.
   - **Destination.** Donnez une adresse `sftp://host/path` explicite. Omettez-la (fichier seul) pour obtenir un nom **haché sur le contenu** sous `sftp_destination_path` — des octets identiques se dédupliquent vers le même chemin.
   - **Un répertoire voyage en un seul flux.** `upload_many` empaquette puis expédie une archive `tar.gz` unique (un `put` plus une extraction `tar` distante) dès que le serveur accepte l'exécution, au lieu d'un aller-retour par fichier.
-  - **Options.** `overwrite` ignore les destinations déjà présentes avec la même taille (synchronisation incrémentale), `resume` abandonne un transfert partiel périmé, `progress` masque la barre de progression.
+  - **Options.** `overwrite=False` ignore les destinations déjà présentes avec la même taille (synchronisation incrémentale), `resume=False` abandonne un transfert partiel périmé au lieu de le continuer, `progress=False` masque la barre de progression.
 - **Download** d'un fichier **ou d'un répertoire** distant vers le disque (par
   défaut le nom de base distant pour un fichier seul), accéléré par archive de
   la même façon via `download_many`, avec les mêmes options `overwrite`/
@@ -76,8 +77,9 @@ Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement
 - **Vérification stricte de la clé d'hôte, toujours active** : OpenSSH
   `StrictHostKeyChecking=yes`, sans échappatoire ; faites confiance à une clé
   supplémentaire via l'identifiant optionnel `sftp_known_hosts`.
-- **Trois surfaces, un seul comportement** : bibliothèque Python, CLI click
-  (`sftp-helper`) et surface HTTP FastAPI.
+- **Quatre surfaces, un seul comportement** : bibliothèque Python, CLI click
+  (`sftp-helper`), surface HTTP FastAPI puis outils MCP montés sur cette même
+  app (`sftp-helper-mcp`).
   Voir la [section multi-surface](#exposition-multi-surface).
 - Catalogue de déclencheurs dans [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md).
 
@@ -103,6 +105,7 @@ pip install sftp-helper
 
 # Surfaces optionnelles
 pip install "sftp-helper[api]"       # surface HTTP FastAPI
+pip install "sftp-helper[mcp]"       # outils MCP sur la même app (inclut [api])
 ```
 
 ### Depuis les sources (sans PyPI)
@@ -114,6 +117,7 @@ pip install -e .
 
 # Surfaces optionnelles
 pip install -e ".[api]"
+pip install -e ".[mcp]"
 ```
 
 ## Écrire votre fichier de configuration
@@ -235,7 +239,7 @@ cred = sftph.credentials("path/to/settings.yaml")
 remote_file = cred["sftp_destination_path"] + "/" + local_file
 url = cred["sftp_https"] + "/" + local_file
 
-# upload() lève une exception en cas d'échec et retourne l'URL en cas de succès.
+# upload() lève une exception en cas d'échec et retourne l'adresse distante écrite en cas de succès.
 sftph.upload(local_file, cred, remote_file)
 print(f"Uploadé {local_file} vers {remote_file}")
 # Uploadé example.txt vers /remote/base/path/example.txt
@@ -325,7 +329,7 @@ pip install "sftp-helper[mcp]"
 SFTP_HELPER_CONFIG=./settings.yaml sftp-helper-mcp
 ```
 
-Image Docker (HTTP sur le port 8000) :
+Image Docker (HTTP + MCP sur le port 8000) :
 
 ```bash
 docker build -t sftp-helper .
@@ -334,6 +338,12 @@ docker run --rm -p 8000:8000 \
   -e SFTP_HELPER_CONFIG=/app/settings.yaml \
   sftp-helper
 ```
+
+Un conteneur n'hérite ni de votre agent SSH ni de votre `~/.ssh/known_hosts` :
+la connexion par clé comme la vérification de la clé d'hôte exigent de les y
+monter. [`docker-compose.yml`](https://github.com/warith-harchaoui/sftp-helper/blob/main/docker-compose.yml)
+fait les deux en expliquant chaque étape dans ses commentaires
+(`docker compose up --build`).
 
 Voir [`TRIGGERS.md`](https://github.com/warith-harchaoui/sftp-helper/blob/main/TRIGGERS.md) pour le catalogue exhaustif des formulations,
 commandes et fonctions qui l'invoquent (et des cas où préférer `bucket-helper` /

@@ -13,7 +13,7 @@ skills/sftp-helper/
 ├── SKILL.md                  # name + trigger-rich description + instructions
 └── references/
     ├── cli-reference.md      # full subcommand + flag matrix, output contract
-    ├── surfaces.md           # library, two CLIs, HTTP API, MCP
+    ├── surfaces.md           # library, HTTP API, MCP
     └── triggers.md           # exhaustive, auditable trigger catalogue
 ```
 
