@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`sftp-helper-mcp --help` started the server.** The entry point read its
+  bind from `SFTP_HELPER_HOST` / `SFTP_HELPER_PORT` and ignored its arguments,
+  so `--help` bound a port and never returned. It is now a click command:
+  `--help` prints the usage, `--host` / `--port` are accepted, and a plain run
+  behaves as before (same variables, same `127.0.0.1:8000` default, same
+  banner). `tests/test_every_command_answers_help.py` runs every console script
+  with `--help` under a timeout.
+- **The two trigger catalogues had drifted apart.** `TRIGGERS.md` and the
+  skill's `references/triggers.md` are now one text, written to both paths,
+  and `scripts/check_triggers.py` fails when they differ. The `tempfile` row
+  no longer calls the CLI and API path self-deleting: they mint a name and
+  upload nothing; only the library `with` block deletes the file on exit.
+
 ## [3.6.2] - 2026-11-05
 
 ### Fixed

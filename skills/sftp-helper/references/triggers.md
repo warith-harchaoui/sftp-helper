@@ -1,11 +1,14 @@
-# sftp-helper skill — exhaustive trigger catalogue
+# sftp-helper — exhaustive trigger catalogue
 
-Auditable superset of the phrasings that should fire this skill. The
-`description:` in `SKILL.md` is what a host model actually sees and is capped at
-1024 characters; this file carries the full list. Keep the two in sync — and
-keep this file in sync with the repo-root `TRIGGERS.md`, the user-facing
-catalogue it mirrors.
+The exhaustive catalogue of what `sftp-helper` does and of the natural-language
+phrasings, commands, functions and context cues that should invoke it, whether you
+call it yourself or drive it as an agent skill.
 
+It lives twice, byte-identical: `TRIGGERS.md` at the repo root for people, and
+`skills/sftp-helper/references/triggers.md` for the skill. `scripts/check_triggers.py`
+fails when the two drift apart. The `description:` in `SKILL.md` is what a host
+model actually sees and is capped at 1024 characters; this file is the
+auditable superset behind it, so keep the two in sync.
 
 `sftp-helper` moves **files** to and from a **remote SFTP server over SSH**, with
 strict host-key verification always on. It is **not** local-first (its whole
@@ -26,7 +29,7 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 | Create a remote dir (`mkdir -p`) | `sftp-helper mkdir` | `make_remote_directory` | `POST /mkdir` |
 | Normalize a remote path | `sftp-helper normalize-path` | `normalize_path` | `GET /normalize-path` |
 | Strip `sftp://host` from an address | `sftp-helper strip-path` | `strip_sftp_path` | `GET /strip-path` |
-| Reserve a self-deleting temp path | `sftp-helper tempfile` | `remote_tempfile` | `POST /tempfile` |
+| Reserve a unique temp path + its URL (library: a `with` block that deletes it on exit; CLI / API: mint the name only, nothing is uploaded) | `sftp-helper tempfile` | `remote_tempfile` | `POST /tempfile` |
 | Show resolved credentials (masked) | `sftp-helper show-credentials` | `credentials` | `GET /show-credentials` |
 
 Every API route but one is also an MCP tool: `sftp-helper-mcp` (the `[mcp]`

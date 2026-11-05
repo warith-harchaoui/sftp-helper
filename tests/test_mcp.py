@@ -54,7 +54,11 @@ def test_main_reads_host_port_env_and_calls_uvicorn_run(monkeypatch) -> None:
     monkeypatch.setenv("SFTP_HELPER_HOST", "0.0.0.0")
     monkeypatch.setenv("SFTP_HELPER_PORT", "9000")
 
-    mcp_module.main()
+    # A click command: an explicit empty argv keeps pytest's own arguments out
+    # of it, and click ends a finished run with SystemExit(0).
+    with pytest.raises(SystemExit) as exit_info:
+        mcp_module.main([])
+    assert exit_info.value.code == 0
 
     (call,) = calls
     _args, kwargs = call
