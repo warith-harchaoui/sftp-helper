@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.2] - 2026-11-05
+
 ### Fixed
 
 - **`strip_sftp_path` removed the host name from anywhere in the path and
