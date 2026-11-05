@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.3] - 2026-11-05
+
 ### Fixed
 
 - **`sftp-helper-mcp --help` started the server.** The entry point read its
