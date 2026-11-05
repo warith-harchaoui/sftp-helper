@@ -29,8 +29,9 @@ purpose is a remote server), it is **not** an S3 client, **not** an SSH shell,
 | Reserve a self-deleting temp path | `sftp-helper tempfile` | `remote_tempfile` | `POST /tempfile` |
 | Show resolved credentials (masked) | `sftp-helper show-credentials` | `credentials` | `GET /show-credentials` |
 
-Every API route is also an MCP tool: `sftp-helper-mcp` (the `[mcp]` extra)
-mounts them on the same app at `/mcp`.
+Every API route but one is also an MCP tool: `sftp-helper-mcp` (the `[mcp]`
+extra) mounts them on the same app at `/mcp`. `GET /show-credentials` stays
+HTTP-only, so no MCP tool hands the host, login or key path to an agent.
 
 `upload`/`download` handle a directory transparently: every file underneath is
 sent in one `upload_many`/`download_many` batch, which packs-and-ships as a

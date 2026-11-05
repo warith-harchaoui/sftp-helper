@@ -63,7 +63,8 @@ PyPI's release history and this repository's `CHANGELOG.md`, not from a marketin
 - **Create remote directories** with `mkdir -p` semantics
   (`make_remote_directory`): every missing intermediate level is created.
 - **Path helpers**: `normalize_path` (single leading `/`, no trailing `/`) and
-  `strip_sftp_path` (drop the `sftp://` scheme + host).
+  `strip_sftp_path` (drop a leading `sftp://user@host:port`, never a host
+  name found deeper in the path).
 - **`remote_tempfile`** context manager: reserve a unique random remote path
   (optionally under a subdir, optionally with an extension) that is
   **auto-deleted on block exit**, even if an exception propagates; hands back

@@ -274,13 +274,19 @@ canonique — un seul `/` initial, aucun final :
 ```
 
 `strip_sftp_path` est l'inverse de l'écriture d'une adresse complète : il
-retire le schéma puis l'hôte, ne lisant que `cred["sftp_host"]` ; il est
-idempotent sur un chemin déjà nu :
+retire le schéma puis l'autorité (`user@`, hôte, `:port`) ; il est
+idempotent sur un chemin déjà nu. Seule la tête de l'adresse est touchée :
+un répertoire qui porte le nom de l'hôte reste intact. `cred["sftp_host"]`
+ne sert qu'à reconnaître un hôte écrit sans le schéma :
 
 ```python
->>> sftph.strip_sftp_path("sftp://sftp.example.com/inbox/report.pdf",
-...                       {"sftp_host": "sftp.example.com"})
+>>> cred = {"sftp_host": "sftp.example.com"}
+>>> sftph.strip_sftp_path("sftp://sftp.example.com/inbox/report.pdf", cred)
 '/inbox/report.pdf'
+>>> sftph.strip_sftp_path("sftp://alice@sftp.example.com:2222/inbox/report.pdf", cred)
+'/inbox/report.pdf'
+>>> sftph.strip_sftp_path("/www/sftp.example.com/index.html", cred)
+'/www/sftp.example.com/index.html'
 ```
 
 `normalize_path` est aussi le garde-fou anti-injection du paquet. Toute

@@ -3,11 +3,13 @@
 A thin adapter that exposes the FastAPI app from :mod:`sftp_helper.api` as MCP
 tools, so any MCP-aware host (an agent runtime, an IDE integration, a custom
 shell) can call the sftp-helper operations (upload, download, delete, exists,
-dir-exists, mkdir, normalize-path, strip-path, tempfile, show-credentials)
-as first-class tools, against the single SFTP target the server was started
-with. Strict host-key verification stays on always; credentials are loaded
-once at server start and never accepted in a request body, see
-:mod:`sftp_helper.api`.
+dir-exists, list, remote-stat, mkdir, normalize-path, strip-path, tempfile,
+health) as first-class tools, against the single SFTP target the server was
+started with. Strict host-key verification stays on always; credentials are
+loaded once at server start and never accepted in a request body, see
+:mod:`sftp_helper.api`. ``/show-credentials`` stays an HTTP-only route: it is
+deliberately left out of the MCP tools, so an agent cannot read the host,
+login or key path back.
 Uses `fastapi-mcp` (https://github.com/tadata-org/fastapi_mcp): one wrapper
 publishes the whole existing HTTP surface, so the routes are never duplicated.
 
@@ -34,21 +36,37 @@ except ImportError as exc:  # pragma: no cover - exercised only without the extr
         'The MCP surface needs the [mcp] extra: pip install "sftp-helper[mcp]"'
     ) from exc
 
+from fastapi.routing import APIRoute
+
 # Reuse the exact same FastAPI app: MCP is a thin wrapper on top, no new routes.
 from sftp_helper.api import app
 
-# Publish the HTTP endpoints (upload / download / delete / exists / mkdir / ...)
-# as MCP tools.
+# Routes that must never become MCP tools. ``/show-credentials`` returns the
+# host, login and key path (password masked): fine for the operator on the
+# loopback HTTP API, not something to hand an agent. The operation id is read
+# off the route rather than hard-coded, so renaming the handler cannot quietly
+# re-expose it.
+_HTTP_ONLY_PATHS = {"/show-credentials"}
+_EXCLUDED_OPERATIONS = [
+    route.operation_id or route.unique_id
+    for route in app.routes
+    if isinstance(route, APIRoute) and route.path in _HTTP_ONLY_PATHS
+]
+
+# Publish every other HTTP endpoint (upload / download / delete / exists /
+# list / mkdir / ...) as an MCP tool.
 mcp = FastApiMCP(
     app,
     name="sftp-helper",
     description=(
         "sftp-helper MCP tools: upload, download, delete, exists, dir-exists, "
-        "mkdir, normalize-path, strip-path, and tempfile against a single SFTP "
-        "target reached via the system OpenSSH client, with strict host-key "
-        "verification always on. Credentials are fixed server-side at start "
-        "time — no MCP tool call accepts or exposes them."
+        "list, remote-stat, mkdir, normalize-path, strip-path, tempfile and "
+        "health against a single SFTP target reached via the system OpenSSH "
+        "client, with strict host-key verification always on. Credentials are "
+        "fixed server-side at start time — no MCP tool call accepts or "
+        "exposes them."
     ),
+    exclude_operations=_EXCLUDED_OPERATIONS,
 )
 # Newer fastapi-mcp splits mount() into transport-specific mount_http(); fall back to
 # the legacy mount() so a range of fastapi-mcp versions keeps working.

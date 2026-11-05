@@ -67,6 +67,40 @@ def test_strip_sftp_path():
     assert once == twice == "/folder/file.txt"
 
 
+def test_strip_sftp_path_removes_only_a_leading_host():
+    # The host is an authority, not a substring: it is removed only where an
+    # address can carry one (the head), never from inside the path, and the
+    # user / port that may surround it go with it.
+    cred = {"sftp_host": "sftp.example.com"}
+    cases = {
+        # Bare paths are left alone, even when a directory bears the host name.
+        "/www/sftp.example.com/a.txt": "/www/sftp.example.com/a.txt",
+        "/sftp.example.com/a.txt": "/sftp.example.com/a.txt",
+        "www/a.txt": "/www/a.txt",
+        "/": "/",
+        # Full URLs: user, port and host all belong to the authority.
+        "sftp://sftp.example.com/a.txt": "/a.txt",
+        "sftp://sftp.example.com:2222/a.txt": "/a.txt",
+        "sftp://alice@sftp.example.com:2222/a.txt": "/a.txt",
+        "SFTP://sftp.example.com/a.txt": "/a.txt",
+        "sftp://sftp.example.com": "/",
+        "sftp://sftp.example.com/www/sftp.example.com/a.txt": "/www/sftp.example.com/a.txt",
+        # Host without the scheme, at the head only.
+        "sftp.example.com/a.txt": "/a.txt",
+        "sftp.example.com:2222/a.txt": "/a.txt",
+        "alice@sftp.example.com/a.txt": "/a.txt",
+        "sftp.example.com": "/",
+        # A name that merely starts like the host is a directory, not the host.
+        "sftp.example.community/a.txt": "/sftp.example.community/a.txt",
+    }
+    for raw, expected in cases.items():
+        assert sftph.strip_sftp_path(raw, cred) == expected, raw
+    # A host configured with its scheme is matched all the same.
+    with_scheme = {"sftp_host": "sftp://sftp.example.com"}
+    assert sftph.strip_sftp_path("sftp.example.com:2222/a.txt", with_scheme) == "/a.txt"
+    assert sftph.strip_sftp_path("/www/sftp.example.com/a", with_scheme) == "/www/sftp.example.com/a"
+
+
 # ---------------------------------------------------------------------------
 # credentials() loader
 # ---------------------------------------------------------------------------

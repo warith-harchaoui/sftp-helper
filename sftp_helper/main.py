@@ -1095,30 +1095,63 @@ def normalize_path(path: str) -> str:
     return path.rstrip("/") or "/"
 
 
+_SFTP_SCHEME = re.compile(r"^sftp://", re.IGNORECASE)
+
+
 def strip_sftp_path(sftp_address: str, cred: dict) -> str:
     """
-    Strip ``sftp://`` and the host from an SFTP address.
+    Strip ``sftp://`` and the authority (``user@host:port``) from an address.
 
+    Only the head of the address is touched: with the scheme, everything up
+    to the first ``/`` is the authority; without it, the configured host is
+    removed only when the address starts with it (optionally preceded by
+    ``user@`` and followed by ``:port``). A path that merely contains the
+    host name (``/www/sftp.example.com/a.txt``) comes back as it was.
     Idempotent: passing an already-stripped path returns it unchanged
     (modulo normalization).
 
     Parameters
     ----------
     sftp_address : str
-        Either a full ``sftp://host/path`` address or a plain remote path.
+        A full ``sftp://[user@]host[:port]/path`` address, the same without
+        the scheme, or a plain remote path.
     cred : dict
-        Credentials dict; only ``cred["sftp_host"]`` is read, to know which
-        host token to remove.
+        Credentials dict; only ``cred["sftp_host"]`` is read, to recognise a
+        leading host written without the scheme.
 
     Returns
     -------
     str
         The normalized remote path with scheme and host removed.
     """
-    # Remove the scheme and the host token so what remains is a plain remote
-    # path. Doing both replacements makes the function idempotent: a path that
-    # was already stripped has nothing left to remove.
-    stripped = sftp_address.replace("sftp://", "").replace(cred["sftp_host"], "")
+    # The host is an authority, never a substring of the path: it is removed
+    # only from the head of the address, together with the ``user@`` and
+    # ``:port`` that may surround it. A directory that happens to bear the
+    # host's name (``/www/sftp.example.com/``) is left untouched.
+    if _SFTP_SCHEME.match(sftp_address):
+        # ``sftp://[user@]host[:port]/path``: the authority runs up to the
+        # first '/'. Split by hand rather than with ``urllib.parse.urlsplit``,
+        # which would read a '?' or '#' in a file name as a query / fragment
+        # and silently drop the rest of the path.
+        rest = _SFTP_SCHEME.sub("", sftp_address, count=1)
+        slash = rest.find("/")
+        stripped = "" if slash == -1 else rest[slash:]
+    else:
+        # No scheme: a plain path, or ``[user@]host[:port]/path`` written
+        # without it. The host only counts when it is followed by a port, a
+        # '/' or the end, so ``sftp.example.community/`` stays a directory.
+        host = _SFTP_SCHEME.sub("", str(cred["sftp_host"]), count=1).rstrip("/")
+        head = (
+            re.match(
+                rf"(?:[^/@]+@)?{re.escape(host)}(?::\d*)?(?=/|$)",
+                sftp_address,
+                re.IGNORECASE,
+            )
+            if host
+            else None
+        )
+        stripped = sftp_address[head.end() :] if head else sftp_address
+    # Idempotent: an already-stripped path has no scheme and no leading host.
     return normalize_path(stripped)
 
 

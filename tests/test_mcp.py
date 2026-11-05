@@ -61,3 +61,16 @@ def test_main_reads_host_port_env_and_calls_uvicorn_run(monkeypatch) -> None:
     assert kwargs["host"] == "0.0.0.0"
     assert kwargs["port"] == 9000
     assert kwargs["workers"] == 1
+
+
+def test_show_credentials_is_not_an_mcp_tool() -> None:
+    """The description promises no MCP tool exposes the credentials, so
+    ``/show-credentials`` (host, login, key path) stays an HTTP-only route:
+    it must not be published as a tool, while the HTTP route keeps working."""
+    names = {tool.name for tool in mcp_module.mcp.tools}
+    assert not any("show_credentials" in n for n in names), names
+    # Every other route is still a tool: the exclusion is surgical.
+    assert any("strip_path" in n for n in names), names
+    assert any("upload" in n for n in names), names
+    paths = {getattr(r, "path", None) for r in mcp_module.app.routes}
+    assert "/show-credentials" in paths

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`strip_sftp_path` removed the host name from anywhere in the path and
+  ignored the port.** It ran `str.replace(host, "")`, so
+  `/www/sftp.example.com/a.txt` became `/www//a.txt` and
+  `sftp://sftp.example.com:2222/a.txt` became `/:2222/a.txt`. Every remote
+  path goes through it. The authority (`user@`, host, `:port`) is now removed
+  from the head of the address only, with or without the `sftp://` scheme,
+  and a directory bearing the host's name is left intact.
+- **The MCP surface published `/show-credentials` as a tool** while its
+  description promised that no MCP tool exposes the credentials. The route is
+  now excluded from the MCP tools (it stays on the HTTP API), and the
+  description lists the tools actually served.
+
 ## [3.6.1] - 2026-11-01
 
 ### Fixed

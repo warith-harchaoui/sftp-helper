@@ -266,13 +266,19 @@ no trailing one:
 ```
 
 `strip_sftp_path` is the inverse of writing a full address: it drops the
-scheme and the host, reading only `cred["sftp_host"]`, and is idempotent on
-a path that is already bare:
+scheme and the authority (`user@`, host, `:port`), and is idempotent on a
+path that is already bare. Only the head of the address is touched, so a
+directory that bears the host's name survives; `cred["sftp_host"]` is read
+only to recognise a host written without the scheme:
 
 ```python
->>> sftph.strip_sftp_path("sftp://sftp.example.com/inbox/report.pdf",
-...                       {"sftp_host": "sftp.example.com"})
+>>> cred = {"sftp_host": "sftp.example.com"}
+>>> sftph.strip_sftp_path("sftp://sftp.example.com/inbox/report.pdf", cred)
 '/inbox/report.pdf'
+>>> sftph.strip_sftp_path("sftp://alice@sftp.example.com:2222/inbox/report.pdf", cred)
+'/inbox/report.pdf'
+>>> sftph.strip_sftp_path("/www/sftp.example.com/index.html", cred)
+'/www/sftp.example.com/index.html'
 ```
 
 `normalize_path` is also the package's injection guard. Every function that

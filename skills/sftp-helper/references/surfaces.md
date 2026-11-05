@@ -59,7 +59,10 @@ sftp-helper-mcp                     # same app, MCP mounted at /mcp
 
 `sftp_helper.mcp` takes the FastAPI app from `sftp_helper.api` and mounts
 `FastApiMCP` on it. Every MCP tool *is* an HTTP route, so the two surfaces
-cannot drift and one process serves both doors.
+cannot drift and one process serves both doors. The converse holds for all
+routes but `/show-credentials`, which is excluded from the tools on purpose:
+the description promises that no MCP call exposes the credentials, and the
+host, login and key path stay readable on the loopback HTTP API only.
 
 Register it with Claude Code:
 

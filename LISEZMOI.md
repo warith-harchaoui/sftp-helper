@@ -65,7 +65,8 @@ Rien ici n'est promis sans preuve à l'appui : ces chiffres viennent directement
 - **Création de répertoires distants** avec la sémantique `mkdir -p`
   (`make_remote_directory`) : chaque niveau intermédiaire manquant est créé.
 - **Helpers de chemin** : `normalize_path` (un seul `/` initial, pas de `/` final)
-  et `strip_sftp_path` (retire le schéma `sftp://` + l'hôte).
+  et `strip_sftp_path` (retire un `sftp://user@hôte:port` de tête, jamais un
+  nom d'hôte situé plus loin dans le chemin).
 - **Context manager `remote_tempfile`** : réserve un chemin distant aléatoire
   unique (optionnellement sous un sous-dossier, optionnellement avec une
   extension) **supprimé automatiquement à la sortie du bloc**, même si une
