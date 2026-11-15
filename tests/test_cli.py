@@ -28,7 +28,6 @@ Warith Harchaoui, Ph.D. — https://linkedin.com/in/warith-harchaoui/
 from __future__ import annotations
 
 import contextlib
-import io
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass

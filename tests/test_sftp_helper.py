@@ -98,7 +98,9 @@ def test_strip_sftp_path_removes_only_a_leading_host():
     # A host configured with its scheme is matched all the same.
     with_scheme = {"sftp_host": "sftp://sftp.example.com"}
     assert sftph.strip_sftp_path("sftp.example.com:2222/a.txt", with_scheme) == "/a.txt"
-    assert sftph.strip_sftp_path("/www/sftp.example.com/a", with_scheme) == "/www/sftp.example.com/a"
+    assert (
+        sftph.strip_sftp_path("/www/sftp.example.com/a", with_scheme) == "/www/sftp.example.com/a"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +352,37 @@ def test_list_dir_flat(sftp, cred):
     assert sftph.list_dir("/srv/uploads", cred) == []
 
 
+def test_list_dir_drops_batch_echo_and_full_paths(sftp, cred):
+    # Batch mode echoes the command, and some servers (Gandi) list full paths.
+    sftp.push(out='sftp> ls -1 "/srv/uploads"\n/srv/uploads/a.txt\n/srv/uploads/sub\n')
+    assert sftph.list_dir("/srv/uploads", cred) == ["a.txt", "sub"]
+
+
+def test_download_creates_missing_parent(sftp, cred, tmp_path, monkeypatch):
+    target = tmp_path / "deep" / "er" / "f.txt"
+    seen = {}
+
+    def fake_resumable(cred_, remote, local, **kw):
+        seen["parent_exists"] = os.path.isdir(os.path.dirname(local))
+        with open(local, "w") as fh:
+            fh.write("x")
+
+    monkeypatch.setattr(sftph.main, "_download_resumable", fake_resumable)
+    monkeypatch.setattr(sftph.main, "remote_dir_exist", lambda *a, **k: False)
+    assert sftph.download("/srv/f.txt", cred, str(target)) == str(target)
+    assert seen["parent_exists"] is True
+
+
+def test_unknown_host_key_error_explains_the_fix(sftp, cred):
+    sftp.push(
+        err="No ED25519 host key is known for example.org and you have requested "
+        "strict checking.\nHost key verification failed.\nConnection closed",
+        code=255,
+    )
+    with pytest.raises(Exception, match="ssh-keyscan"):
+        sftph.list_dir("/srv/uploads", cred)
+
+
 def test_list_dir_missing_raises(sftp, cred):
     sftp.push(err="Can't ls: /srv/missing: No such file or directory")
     with pytest.raises(Exception, match="No such remote directory"):
@@ -361,11 +394,11 @@ def test_list_dir_recursive(sftp, cred):
     # not recurse), so list_dir emulates it: `ls -1` the top, then a `cd`
     # probe per entry to tell files from sub-directories, recursing into the
     # latter. Nested layout: /srv/uploads/{a.txt, sub/{b.txt}}.
-    sftp.push(out="a.txt\nsub\n")                                  # ls -1 /srv/uploads
-    sftp.push(err="Couldn't stat: No such file or directory")      # cd a.txt -> not a dir
-    sftp.push()                                                     # cd sub -> is a dir
-    sftp.push(out="b.txt\n")                                       # ls -1 /srv/uploads/sub
-    sftp.push(err="Couldn't stat: No such file or directory")      # cd sub/b.txt -> not a dir
+    sftp.push(out="a.txt\nsub\n")  # ls -1 /srv/uploads
+    sftp.push(err="Couldn't stat: No such file or directory")  # cd a.txt -> not a dir
+    sftp.push()  # cd sub -> is a dir
+    sftp.push(out="b.txt\n")  # ls -1 /srv/uploads/sub
+    sftp.push(err="Couldn't stat: No such file or directory")  # cd sub/b.txt -> not a dir
     assert sftph.list_dir("/srv/uploads", cred, recursive=True) == ["a.txt", "sub/b.txt"]
 
     # Flat layout: no sub-directories at all.
@@ -388,7 +421,12 @@ def test_parse_ls_long_line():
     row = sftph_main._parse_ls_long_line(
         "-rw-r--r--    1 user     group      1234 Aug 10 10:30 readme.txt", now=now
     )
-    assert row == {"name": "readme.txt", "is_dir": False, "size": 1234, "mtime": _dt(2026, 8, 10, 10, 30)}
+    assert row == {
+        "name": "readme.txt",
+        "is_dir": False,
+        "size": 1234,
+        "mtime": _dt(2026, 8, 10, 10, 30),
+    }
 
     row = sftph_main._parse_ls_long_line(
         "-rw-r--r--    1 user     group      1234 Jan 15  2023 old.txt", now=now
@@ -439,7 +477,9 @@ def test_remote_stat(sftp, cred):
 
 
 def test_list_dir_stat_recursive(sftp, cred):
-    sftp.push(out="-rw-r--r--  1 u g  100 Aug 10 10:30 a.txt\ndrwxr-xr-x 2 u g 512 Aug 5 09:00 sub\n")
+    sftp.push(
+        out="-rw-r--r--  1 u g  100 Aug 10 10:30 a.txt\ndrwxr-xr-x 2 u g 512 Aug 5 09:00 sub\n"
+    )
     sftp.push(out="-rw-r--r--  1 u g  200 Aug 9 08:00 b.txt\n")
     tree = sftph.list_dir_stat("/srv/uploads", cred)
     assert set(tree.keys()) == {"a.txt", "sub/b.txt"}
@@ -534,7 +574,11 @@ def test_upload_resumable_branches(sftp, cred, tmp_path, monkeypatch):
     calls = upload_and_new_calls(
         "b.txt",
         "0123456789",
-        [{"size": 5, "mtime": None}, {"size": size10, "mtime": None}, {"size": size10, "mtime": None}],
+        [
+            {"size": 5, "mtime": None},
+            {"size": size10, "mtime": None},
+            {"size": size10, "mtime": None},
+        ],
     )
     reput = next(c for c in calls if "reput -p" in (c.batch or ""))
     assert f'reput -p "{tmp_path / "b.txt"}" "/inbox/b.txt.sftp-helper-upload"' in reput.batch
@@ -549,7 +593,9 @@ def test_upload_resumable_branches(sftp, cred, tmp_path, monkeypatch):
             {"size": size10, "mtime": None},
         ],
     )
-    assert any(c.batch and c.batch.strip() == '-rm "/inbox/c.txt.sftp-helper-upload"' for c in calls)
+    assert any(
+        c.batch and c.batch.strip() == '-rm "/inbox/c.txt.sftp-helper-upload"' for c in calls
+    )
     put = next(c for c in calls if "put -p" in (c.batch or "") and "reput" not in (c.batch or ""))
     assert f'put -p "{tmp_path / "c.txt"}" "/inbox/c.txt.sftp-helper-upload"' in put.batch
 
@@ -595,7 +641,9 @@ def test_upload_retries_then_exhausts(sftp, cred, tmp_path, monkeypatch):
     sftp.push(err="Connection reset")  # first put attempt fails
     result = sftph.upload(str(local), cred, "/inbox/clip.bin")
     assert result == "/inbox/clip.bin"
-    put_calls = [c for c in sftp.calls if "put -p" in (c.batch or "") and "reput" not in (c.batch or "")]
+    put_calls = [
+        c for c in sftp.calls if "put -p" in (c.batch or "") and "reput" not in (c.batch or "")
+    ]
     assert len(put_calls) == 2
 
     # ...whereas a partial that NEVER completes exhausts every retry and raises.
@@ -634,12 +682,19 @@ def test_upload_overwrite_false_behavior(sftp, cred, tmp_path, monkeypatch):
     local_c.write_text("AB")
     size = local_c.stat().st_size
     stats = iter(
-        [{"size": 999, "mtime": None}, None, {"size": size, "mtime": None}, {"size": size, "mtime": None}]
+        [
+            {"size": 999, "mtime": None},
+            None,
+            {"size": size, "mtime": None},
+            {"size": size, "mtime": None},
+        ]
     )
     monkeypatch.setattr(sftph_main, "remote_stat", lambda _p, _c: next(stats))
     out = sftph.upload(str(local_c), cred, "/inbox/c.txt", overwrite=False)
     assert out == "/inbox/c.txt"
-    put_call = next(c for c in sftp.calls if "put -p" in (c.batch or "") and "reput" not in (c.batch or ""))
+    put_call = next(
+        c for c in sftp.calls if "put -p" in (c.batch or "") and "reput" not in (c.batch or "")
+    )
     assert f'put -p "{local_c}" "/inbox/c.txt.sftp-helper-upload"' in put_call.batch
 
 
@@ -651,12 +706,16 @@ def test_upload_resume_false_discards_stale_temp_first(sftp, cred, tmp_path, mon
     monkeypatch.setattr(sftph_main, "remote_stat", lambda _path, _cred: next(stats))
     sftph.upload(str(local), cred, "/inbox/a.txt", resume=False)
     batches = [c.batch or "" for c in sftp.calls]
-    rm_idx = next(i for i, b in enumerate(batches) if b.strip() == '-rm "/inbox/a.txt.sftp-helper-upload"')
+    rm_idx = next(
+        i for i, b in enumerate(batches) if b.strip() == '-rm "/inbox/a.txt.sftp-helper-upload"'
+    )
     put_idx = next(i for i, b in enumerate(batches) if "put -p" in b and "reput" not in b)
     assert rm_idx < put_idx
 
 
-def test_upload_progress_false_forwarded_to_run_sftp_with_progress(sftp, cred, tmp_path, monkeypatch):
+def test_upload_progress_false_forwarded_to_run_sftp_with_progress(
+    sftp, cred, tmp_path, monkeypatch
+):
     local = tmp_path / "a.txt"
     local.write_text("AB")
     size = local.stat().st_size
@@ -715,18 +774,26 @@ def test_upload_many_dispatch(cred, monkeypatch):
     # exec available, no override -> archive path used, per-file never touched.
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: True)
     archive_calls = []
-    monkeypatch.setattr(sftph_main, "_upload_many_archive", lambda fs, _c: archive_calls.append(fs) or {})
-    monkeypatch.setattr(sftph_main, "upload", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no per-file")))
+    monkeypatch.setattr(
+        sftph_main, "_upload_many_archive", lambda fs, _c: archive_calls.append(fs) or {}
+    )
+    monkeypatch.setattr(
+        sftph_main, "upload", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no per-file"))
+    )
     sftph.upload_many(files, cred)
     assert archive_calls == [files]
 
     # no exec -> falls back to per-file, archive never called.
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: False)
     monkeypatch.setattr(
-        sftph_main, "_upload_many_archive", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive"))
+        sftph_main,
+        "_upload_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive")),
     )
     seen = []
-    monkeypatch.setattr(sftph_main, "upload", lambda local, _c, addr, **k: seen.append((local, addr)) or addr)
+    monkeypatch.setattr(
+        sftph_main, "upload", lambda local, _c, addr, **k: seen.append((local, addr)) or addr
+    )
     result = sftph.upload_many(files, cred)
     assert seen == [("a.txt", "/inbox/a.txt")]
     assert result == {"a.txt": "/inbox/a.txt"}
@@ -734,7 +801,9 @@ def test_upload_many_dispatch(cred, monkeypatch):
     # exec available but archive raises -> degrades to per-file.
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: True)
     monkeypatch.setattr(
-        sftph_main, "_upload_many_archive", lambda *a, **k: (_ for _ in ()).throw(Exception("unzip: not found"))
+        sftph_main,
+        "_upload_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(Exception("unzip: not found")),
     )
     seen.clear()
     result = sftph.upload_many(files, cred)
@@ -746,22 +815,30 @@ def test_upload_many_dispatch(cred, monkeypatch):
         sftph_main, "_probe_exec", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no probe"))
     )
     archive_calls.clear()
-    monkeypatch.setattr(sftph_main, "_upload_many_archive", lambda fs, _c: archive_calls.append(fs) or {})
+    monkeypatch.setattr(
+        sftph_main, "_upload_many_archive", lambda fs, _c: archive_calls.append(fs) or {}
+    )
     sftph.upload_many(files, cred, archive=True)
     assert archive_calls == [files]
 
     # archive=False forces per-file without ever probing.
     seen.clear()
-    monkeypatch.setattr(sftph_main, "upload", lambda local, _c, addr, **k: seen.append((local, addr)) or addr)
+    monkeypatch.setattr(
+        sftph_main, "upload", lambda local, _c, addr, **k: seen.append((local, addr)) or addr
+    )
     sftph.upload_many(files, cred, archive=False)
     assert seen == [("a.txt", "/inbox/a.txt")]
 
     # overwrite=False forces per-file even when archive=True is explicit.
     monkeypatch.setattr(
-        sftph_main, "_upload_many_archive", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive"))
+        sftph_main,
+        "_upload_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive")),
     )
     kwargs_seen = []
-    monkeypatch.setattr(sftph_main, "upload", lambda local, _c, addr, **k: kwargs_seen.append(k) or addr)
+    monkeypatch.setattr(
+        sftph_main, "upload", lambda local, _c, addr, **k: kwargs_seen.append(k) or addr
+    )
     sftph.upload_many(files, cred, archive=True, overwrite=False)
     assert kwargs_seen == [{"retries": 3, "overwrite": False, "resume": True, "progress": True}]
 
@@ -823,16 +900,22 @@ def test_upload_many_archive_packs_uploads_and_extracts(cred, tmp_path, monkeypa
 def test_upload_many_archive_rejects_file_outside_destination_root(cred, tmp_path, monkeypatch):
     a = tmp_path / "a.txt"
     a.write_text("A")
-    monkeypatch.setattr(sftph_main, "upload", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no upload")))
+    monkeypatch.setattr(
+        sftph_main, "upload", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no upload"))
+    )
     with pytest.raises(ValueError, match="outside the destination root"):
         sftph_main._upload_many_archive([(str(a), "/somewhere/else/a.txt")], cred)
 
 
-def test_upload_many_archive_cleans_up_remote_tar_on_extraction_failure(cred, tmp_path, monkeypatch):
+def test_upload_many_archive_cleans_up_remote_tar_on_extraction_failure(
+    cred, tmp_path, monkeypatch
+):
     a = tmp_path / "a.txt"
     a.write_text("A")
     monkeypatch.setattr(sftph_main, "upload", lambda *a, **k: None)
-    monkeypatch.setattr(sftph_main, "_run_ssh_exec", lambda *a, **k: {"code": 1, "out": "", "err": "tar: not found"})
+    monkeypatch.setattr(
+        sftph_main, "_run_ssh_exec", lambda *a, **k: {"code": 1, "out": "", "err": "tar: not found"}
+    )
     deleted = []
     monkeypatch.setattr(sftph_main, "delete", lambda addr, _cred: deleted.append(addr))
     with pytest.raises(Exception, match="Remote tar extraction failed"):
@@ -857,7 +940,9 @@ def test_upload_folder_delegates_to_upload_many(cred, tmp_path, monkeypatch):
     (tmp_path / ".hidden").write_text("skip me")
 
     calls = []
-    monkeypatch.setattr(sftph_main, "upload_many", lambda files, _cred, **k: calls.append(files) or {})
+    monkeypatch.setattr(
+        sftph_main, "upload_many", lambda files, _cred, **k: calls.append(files) or {}
+    )
     out = sftph.upload(str(tmp_path), cred, "/var/www/uploads/site")
 
     assert out == "/var/www/uploads/site"
@@ -873,7 +958,9 @@ def test_upload_folder_delegates_to_upload_many(cred, tmp_path, monkeypatch):
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
     monkeypatch.setattr(
-        sftph_main, "upload_many", lambda *a, **k: (_ for _ in ()).throw(AssertionError("nothing to upload"))
+        sftph_main,
+        "upload_many",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("nothing to upload")),
     )
     out = sftph.upload(str(empty_dir), cred, "/var/www/uploads/empty")
     assert out == "/var/www/uploads/empty"
@@ -931,7 +1018,9 @@ def test_download_sha256_mismatch_raises_and_discards_part(sftp, cred, tmp_path,
 def test_download_overwrite_false_skips_existing(sftp, cred, tmp_path):
     local = tmp_path / "out.txt"
     local.write_text("already here")
-    out = sftph.download("sftp://sftp.example.com/folder/out.txt", cred, str(local), overwrite=False)
+    out = sftph.download(
+        "sftp://sftp.example.com/folder/out.txt", cred, str(local), overwrite=False
+    )
     assert out == str(local)
     assert sftp.calls == []  # pure local skip, no network round trip at all
 
@@ -941,7 +1030,9 @@ def test_download_overwrite_false_skips_existing(sftp, cred, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_download_resumable_resume_false_discards_stale_part_first(sftp, cred, tmp_path, monkeypatch):
+def test_download_resumable_resume_false_discards_stale_part_first(
+    sftp, cred, tmp_path, monkeypatch
+):
     local = tmp_path / "out.txt"
     part = tmp_path / "out.txt.part"
     part.write_text("stale partial content")
@@ -962,7 +1053,9 @@ def test_download_resumable_resume_false_discards_stale_part_first(sftp, cred, t
     assert local.exists()
 
 
-def test_download_progress_false_forwarded_to_run_sftp_with_progress(sftp, cred, tmp_path, monkeypatch):
+def test_download_progress_false_forwarded_to_run_sftp_with_progress(
+    sftp, cred, tmp_path, monkeypatch
+):
     local = tmp_path / "out.txt"
     monkeypatch.setattr(sftph_main, "remote_stat", lambda _path, _cred: {"size": 0, "mtime": None})
     monkeypatch.setattr(sftph_main, "remote_dir_exist", lambda _addr, _cred: False)
@@ -987,7 +1080,9 @@ def test_download_folder_delegates_to_download_many(cred, tmp_path, monkeypatch)
     monkeypatch.setattr(sftph_main, "remote_dir_exist", lambda _addr, _cred: True)
     monkeypatch.setattr(sftph_main, "list_dir", lambda _addr, _cred, **k: ["a.txt", "sub/b.txt"])
     calls = []
-    monkeypatch.setattr(sftph_main, "download_many", lambda files, _cred, **k: calls.append(files) or {})
+    monkeypatch.setattr(
+        sftph_main, "download_many", lambda files, _cred, **k: calls.append(files) or {}
+    )
 
     out = sftph.download("/var/www/uploads/site", cred, str(tmp_path / "site"))
 
@@ -1012,7 +1107,9 @@ def test_download_folder_delegates_to_download_many(cred, tmp_path, monkeypatch)
     # An empty remote directory is a documented no-op — download_many is never called.
     monkeypatch.setattr(sftph_main, "list_dir", lambda _addr, _cred, **k: [])
     monkeypatch.setattr(
-        sftph_main, "download_many", lambda *a, **k: (_ for _ in ()).throw(AssertionError("nothing to download"))
+        sftph_main,
+        "download_many",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("nothing to download")),
     )
     out = sftph.download("/var/www/uploads/empty", cred, str(tmp_path / "empty"))
     assert out == str(tmp_path / "empty")
@@ -1038,24 +1135,34 @@ def test_download_many_dispatch(cred, monkeypatch):
 
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: True)
     archive_calls = []
-    monkeypatch.setattr(sftph_main, "_download_many_archive", lambda fs, _c: archive_calls.append(fs) or {})
-    monkeypatch.setattr(sftph_main, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no per-file")))
+    monkeypatch.setattr(
+        sftph_main, "_download_many_archive", lambda fs, _c: archive_calls.append(fs) or {}
+    )
+    monkeypatch.setattr(
+        sftph_main, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no per-file"))
+    )
     sftph.download_many(files, cred)
     assert archive_calls == [files]
 
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: False)
     monkeypatch.setattr(
-        sftph_main, "_download_many_archive", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive"))
+        sftph_main,
+        "_download_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive")),
     )
     seen = []
-    monkeypatch.setattr(sftph_main, "download", lambda addr, _c, local, **k: seen.append((addr, local)) or local)
+    monkeypatch.setattr(
+        sftph_main, "download", lambda addr, _c, local, **k: seen.append((addr, local)) or local
+    )
     result = sftph.download_many(files, cred)
     assert seen == [("/inbox/a.txt", "a.txt")]
     assert result == {"/inbox/a.txt": "a.txt"}
 
     monkeypatch.setattr(sftph_main, "_probe_exec", lambda _c: True)
     monkeypatch.setattr(
-        sftph_main, "_download_many_archive", lambda *a, **k: (_ for _ in ()).throw(Exception("zip: not found"))
+        sftph_main,
+        "_download_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(Exception("zip: not found")),
     )
     seen.clear()
     result = sftph.download_many(files, cred)
@@ -1066,20 +1173,28 @@ def test_download_many_dispatch(cred, monkeypatch):
         sftph_main, "_probe_exec", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no probe"))
     )
     archive_calls.clear()
-    monkeypatch.setattr(sftph_main, "_download_many_archive", lambda fs, _c: archive_calls.append(fs) or {})
+    monkeypatch.setattr(
+        sftph_main, "_download_many_archive", lambda fs, _c: archive_calls.append(fs) or {}
+    )
     sftph.download_many(files, cred, archive=True)
     assert archive_calls == [files]
 
     seen.clear()
-    monkeypatch.setattr(sftph_main, "download", lambda addr, _c, local, **k: seen.append((addr, local)) or local)
+    monkeypatch.setattr(
+        sftph_main, "download", lambda addr, _c, local, **k: seen.append((addr, local)) or local
+    )
     sftph.download_many(files, cred, archive=False)
     assert seen == [("/inbox/a.txt", "a.txt")]
 
     monkeypatch.setattr(
-        sftph_main, "_download_many_archive", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive"))
+        sftph_main,
+        "_download_many_archive",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no archive")),
     )
     kwargs_seen = []
-    monkeypatch.setattr(sftph_main, "download", lambda addr, _c, local, **k: kwargs_seen.append(k) or local)
+    monkeypatch.setattr(
+        sftph_main, "download", lambda addr, _c, local, **k: kwargs_seen.append(k) or local
+    )
     sftph.download_many(files, cred, archive=True, overwrite=False)
     assert kwargs_seen == [{"retries": 3, "overwrite": False, "resume": True, "progress": True}]
 
@@ -1103,7 +1218,10 @@ def test_download_many_archive_stages_packs_downloads_and_extracts(cred, tmp_pat
         # Simulate the remote tarball landing locally with the two requested
         # entries at their arcname (remote path minus leading slash).
         with tarfile.open(local_path, "w:gz") as tf:
-            for arcname, data in (("var/www/uploads/a.txt", b"A"), ("var/www/uploads/sub/b.txt", b"B")):
+            for arcname, data in (
+                ("var/www/uploads/a.txt", b"A"),
+                ("var/www/uploads/sub/b.txt", b"B"),
+            ):
                 staged = tmp_path / "_staged_src" / arcname
                 staged.parent.mkdir(parents=True, exist_ok=True)
                 staged.write_bytes(data)
@@ -1121,7 +1239,10 @@ def test_download_many_archive_stages_packs_downloads_and_extracts(cred, tmp_pat
     ]
     result = sftph_main._download_many_archive(files, cred)
 
-    assert result == {"/var/www/uploads/a.txt": str(dest_a), "/var/www/uploads/sub/b.txt": str(dest_b)}
+    assert result == {
+        "/var/www/uploads/a.txt": str(dest_a),
+        "/var/www/uploads/sub/b.txt": str(dest_b),
+    }
     assert dest_a.read_text() == "A"
     assert dest_b.read_text() == "B"
     # Two exec round trips: the scratch dir's own mkdir (_remote_scratch_dir),
@@ -1145,9 +1266,13 @@ def test_download_many_archive_cleans_up_scratch_dir_on_tar_failure(cred, tmp_pa
         return {"code": 0, "out": "", "err": ""}
 
     monkeypatch.setattr(sftph_main, "_run_ssh_exec", fake_exec)
-    monkeypatch.setattr(sftph_main, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no download")))
+    monkeypatch.setattr(
+        sftph_main, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no download"))
+    )
     with pytest.raises(Exception, match="Remote archive staging/tar failed"):
-        sftph_main._download_many_archive([("/var/www/uploads/a.txt", str(tmp_path / "a.txt"))], cred)
+        sftph_main._download_many_archive(
+            [("/var/www/uploads/a.txt", str(tmp_path / "a.txt"))], cred
+        )
     assert any(c.startswith("rm -rf") for c in exec_calls)  # scratch dir still cleaned up
 
 
@@ -1159,7 +1284,9 @@ def test_download_many_archive_cleans_up_scratch_dir_on_tar_failure(cred, tmp_pa
 def test_run_sftp_with_progress_off_tty_delegates_inline(sftp, cred):
     # pytest's stderr is never a TTY, so this exercises the default path every
     # upload/download test above already relies on.
-    res = sftph_main._run_sftp_with_progress(cred, ["ls -l /"], total=100, probe=lambda: 0, desc="x")
+    res = sftph_main._run_sftp_with_progress(
+        cred, ["ls -l /"], total=100, probe=lambda: 0, desc="x"
+    )
     assert res["code"] == 0
     assert len(sftp.calls) == 1
 
@@ -1185,7 +1312,9 @@ def test_run_sftp_with_progress_tty_survives_probe_errors(sftp, cred, monkeypatc
     def bad_probe():
         raise RuntimeError("boom")
 
-    res = sftph_main._run_sftp_with_progress(cred, ["ls -l /"], total=100, probe=bad_probe, desc="x")
+    res = sftph_main._run_sftp_with_progress(
+        cred, ["ls -l /"], total=100, probe=bad_probe, desc="x"
+    )
     assert res["code"] == 0
 
 

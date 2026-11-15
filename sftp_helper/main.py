@@ -662,7 +662,23 @@ def _raise_if_connect_error(err: str, cred: dict, context: str) -> None:
     """
     if any(marker in err for marker in _CONNECT_ERROR_MARKERS):
         target = f"sftp://{_target(cred)}"
-        raise Exception(f"{context} failed to reach {target}.\nError:\n\t{err.strip()}")
+        hint = ""
+        if "host key" in err.lower() and (
+            "not known" in err.lower()
+            or "is known" in err.lower()
+            or "verification failed" in err.lower()
+        ):
+            # Host-key checking is always on, so a first connection to a new
+            # server stops here; say how to get past it without disabling it.
+            host, port = cred["sftp_host"], cred.get("sftp_port") or 22
+            hint = (
+                "\nHint: the server's host key is not trusted yet. Fetch it with\n"
+                f"\tssh-keyscan -p {port} {host} > known_hosts.{host}\n"
+                f"\tssh-keygen -lf known_hosts.{host}   (add -E md5 for an MD5 fingerprint)\n"
+                "compare the fingerprint with the one your host publishes, then point\n"
+                "sftp_known_hosts (or SFTP_KNOWN_HOSTS) at that file."
+            )
+        raise Exception(f"{context} failed to reach {target}.\nError:\n\t{err.strip()}{hint}")
 
 
 # ---------------------------------------------------------------------------
@@ -1368,7 +1384,19 @@ def _sftp_ls_flat(cred: dict, remote_path: str) -> list[str]:
             raise Exception(f"No such remote directory: {remote_path}")
         _raise_if_connect_error(err, cred, "directory listing")
         raise Exception(f"Unexpected error listing {remote_path}:\n\t{err.strip()}")
-    return [ln.strip() for ln in res["out"].splitlines() if ln.strip()]
+    names = []
+    for ln in res["out"].splitlines():
+        ln = ln.strip()
+        # OpenSSH's batch mode echoes each command as "sftp> <command>" on
+        # stdout; that line is not an entry.
+        if not ln or ln.startswith("sftp> "):
+            continue
+        # Some servers answer `ls -1 <dir>` with full paths rather than bare
+        # names (seen on Gandi Simple Hosting). "/" cannot be part of a POSIX
+        # filename, so the last component is the name either way, as in
+        # _parse_ls_long_line.
+        names.append(ln.rsplit("/", 1)[-1])
+    return names
 
 
 def _sftp_list(cred: dict, remote_path: str, *, recursive: bool = False) -> list[str]:
@@ -2239,6 +2267,13 @@ def download(
             resume=resume,
             progress=progress,
         )
+
+    # The per-file path must create the destination's parent itself, like the
+    # archive path of download_many already does: without it, a batch into a
+    # fresh tree failed on every file ("Download failed after 4 attempt(s)").
+    parent = os.path.dirname(local_path)
+    if parent:
+        osh.make_directory(parent)
 
     try:
         _download_resumable(
