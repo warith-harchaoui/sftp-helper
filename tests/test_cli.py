@@ -268,9 +268,7 @@ def test_cli_dir_exists_prints_true_false_with_matching_exit_code(
     assert (code, out.strip()) == (1, "false")
 
 
-def test_cli_list_prints_entries_and_forwards_recursive_flag(
-    cli_driver: CLIDriver, monkeypatch
-):
+def test_cli_list_prints_entries_and_forwards_recursive_flag(cli_driver: CLIDriver, monkeypatch):
     """One entry per line; ``--recursive`` reaches ``list_dir`` unchanged."""
     calls = []
 

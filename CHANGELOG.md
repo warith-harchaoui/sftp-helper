@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-11-15
+
 ### Added
 
 - **Pacing on every contact with the server** (`_remote`, the one door that
@@ -32,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retried for ten minutes.
 - The transfer retries slept a fixed `2**attempt`; they now use full jitter.
 - The path-guard test flagged a bare `"/srv"` in a test added by `69fb66d`.
+- **Accented names were not found.** `ls` answers octal escapes
+  (`Conditions_g\303\251n\303\251rales.pdf` on Gandi); they are now decoded,
+  where the file used to be reported missing and its transfer failed.
+- `download` creates the destination's parent folder: `download_many` on its
+  file-by-file path failed on every file of a new tree.
+- `list_dir` no longer returns the `sftp> ls -1` echo, nor the full paths some
+  servers (Gandi) answer.
+- An unknown host key now says how to check it and pass it through
+  `sftp_known_hosts`.
 
 ## [3.6.3] - 2026-11-05
 
