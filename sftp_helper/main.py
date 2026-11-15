@@ -545,7 +545,7 @@ def _probe_exec(cred: dict) -> bool:
     """
     argv, env = _ssh_exec_argv(cred, f"echo {_EXEC_PROBE_MARKER}")
     try:
-        code, out, _err = _system(argv, env)
+        code, out, _err = _remote(cred, argv, env)
     except Exception:  # noqa: BLE001 — any failure to even ask means "assume no exec"
         return False
     return code == 0 and _EXEC_PROBE_MARKER in out
@@ -565,7 +565,7 @@ def _run_ssh_exec(cred: dict, command: str) -> dict:
         ``{"code": <exit status>, "out": <stdout>, "err": <stderr>}``.
     """
     argv, env = _ssh_exec_argv(cred, command)
-    code, out, err = _system(argv, env)
+    code, out, err = _remote(cred, argv, env)
     return {"code": code, "out": out, "err": err}
 
 
@@ -589,6 +589,187 @@ def _system(argv: list[str], env: dict[str, str]) -> tuple[int, str, str]:
         env={**os.environ, **env},
     )
     return proc.returncode, proc.stdout, proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# Pacing — one connection reused, jittered gaps, backoff on refusal.
+# ---------------------------------------------------------------------------
+#
+# Why this exists. Every `sftp -b` / `ssh` call used to leave the server
+# whenever the caller asked, so a loop of small calls (an existence check per
+# file, a delete per file, the upload progress probe) became a burst of fresh
+# logins. Hosts throttle that without saying so: on 2026-11-15 a shared host
+# (Gandi Simple Hosting, which publishes no SFTP limit at all) began answering
+# "Permission denied" to a correct password after a few calls in a row. A
+# throttled login looks exactly like a wrong password, so the caller is told
+# the credentials are bad.
+#
+# Three rules, applied here once so no caller has to remember them:
+#
+# 1. One connection, reused. ControlMaster (see _ssh_options) already does
+#    this for key auth. For password auth it silently did nothing: the master
+#    is a child of `sshpass`, and dies with it at the end of every call (a
+#    known sshpass interaction, no upstream fix). _ensure_master opens the
+#    master on its own, detached with `ssh -f -N`, so it survives and every
+#    later call attaches to it without logging in again.
+# 2. A random pause before every contact, measured from the previous one:
+#    longer when a fresh login is needed, shorter on a live master. Random,
+#    never fixed: fixed intervals line up across processes and look like a
+#    bot to rate limiters (AWS Architecture Blog, "Exponential Backoff and
+#    Jitter").
+# 3. On a refusal after earlier success, wait with exponential backoff and
+#    full jitter, at least a minute, a few times, then give up. A refusal on
+#    the very first login is most likely a wrong password: retrying it only
+#    feeds fail2ban, so it is reported at once.
+#
+# Tunable without code: SFTP_HELPER_PACE_CONNECT and SFTP_HELPER_PACE_REUSE as
+# "min,max" seconds ("0,0" disables), SFTP_HELPER_REFUSAL_RETRIES.
+
+
+def _env_range(name: str, default: tuple[float, float]) -> tuple[float, float]:
+    """Read a ``"min,max"`` seconds range from the environment."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        low, high = (float(x) for x in raw.split(","))
+    except ValueError:
+        osh.warning(f"{name}={raw!r} is not 'min,max' seconds; using {default}")
+        return default
+    return (max(0.0, min(low, high)), max(0.0, low, high))
+
+
+_PACE_CONNECT = _env_range("SFTP_HELPER_PACE_CONNECT", (1.5, 4.0))
+_PACE_REUSE = _env_range("SFTP_HELPER_PACE_REUSE", (0.3, 1.5))
+_REFUSAL_RETRIES = int(os.environ.get("SFTP_HELPER_REFUSAL_RETRIES", "3") or 3)
+_REFUSAL_MIN_WAIT = 60.0
+_BACKOFF_CAP = 300.0
+
+# Server answers that, after a login already worked, mean "slow down" rather
+# than "wrong credentials".
+_THROTTLE_MARKERS = (
+    "Permission denied (",
+    "Permission denied, please try again",
+    "Too many authentication failures",
+    "kex_exchange_identification",
+    "Connection reset",
+    "Connection closed by",
+)
+
+_pace_lock = threading.Lock()
+_last_contact: dict[str, float] = {}
+_authenticated: set[str] = set()
+# When opening a detached master last failed, per target: one refused login
+# costs several password tries in the host's eyes, so never retry it per call.
+_master_failed_at: dict[str, float] = {}
+_MASTER_RETRY_AFTER = 600.0
+_rng = secrets.SystemRandom()
+
+
+def _backoff_delay(attempt: int, *, base: float = 2.0, floor: float = 0.0) -> float:
+    """Full-jitter exponential backoff: uniform(0, min(cap, base * 2**attempt)), at least ``floor``."""
+    return max(floor, _rng.uniform(0.0, min(_BACKOFF_CAP, base * 2**attempt)))
+
+
+def _master_alive(cred: dict) -> bool:
+    """Whether a ControlMaster socket for ``cred`` is up (local check, no server contact)."""
+    path = _control_path(cred)
+    if not os.path.exists(path):
+        return False
+    proc = subprocess.run(  # noqa: S603, S607 — fixed argv, local control socket only
+        ["ssh", "-O", "check", "-o", f"ControlPath={path}", _target(cred)],
+        capture_output=True,
+        text=True,
+    )
+    return proc.returncode == 0
+
+
+def _ensure_master(cred: dict) -> None:
+    """Open a detached ControlMaster for password auth, so it outlives ``sshpass``.
+
+    Key auth needs nothing: ``ControlMaster=auto`` already leaves a master
+    behind. A failure here is not fatal; the call that follows simply logs in
+    on its own, and reports any real error itself.
+
+    Opened only once a plain call has logged in with these credentials, and
+    not again for ten minutes after a failure. Measured against Gandi on
+    2026-11-15: a master opened before any call was refused twice, while the
+    same password worked for the ``sftp`` call a second later, and a master
+    opened after that first success held for every later call.
+    """
+    prefix, env, use_password = _password_prefix(cred)
+    key = _control_path(cred)
+    if not use_password or key not in _authenticated:
+        return
+    failed = _master_failed_at.get(key)
+    if failed is not None and time.monotonic() - failed < _MASTER_RETRY_AFTER:
+        return
+    if _master_alive(cred):
+        return
+    opts = _ssh_options(cred, batch_mode="no")
+    opts[0] = "-p"  # ssh spells the port flag lowercase (see _ssh_exec_argv)
+    opts = [o.replace("ControlMaster=auto", "ControlMaster=yes") for o in opts]
+    _wait_turn(cred, reuse=False)
+    try:
+        code, _out, err = _system([*prefix, "ssh", *opts, "-f", "-N", _target(cred)], env)
+    finally:
+        _last_contact[_control_path(cred)] = time.monotonic()
+    if code == 0:
+        _master_failed_at.pop(key, None)
+    else:
+        _master_failed_at[key] = time.monotonic()
+        osh.warning(
+            f"sftp: could not open a shared connection, each call will log in: {err.strip()[-200:]}"
+        )
+
+
+def _wait_turn(cred: dict, *, reuse: bool) -> None:
+    """Sleep until a random gap has passed since the last contact with ``cred``'s host."""
+    low, high = _PACE_REUSE if reuse else _PACE_CONNECT
+    if high <= 0:
+        return
+    last = _last_contact.get(_control_path(cred))
+    if last is None:
+        return
+    remaining = last + _rng.uniform(low, high) - time.monotonic()
+    if remaining > 0:
+        time.sleep(remaining)
+
+
+def _remote(cred: dict, argv: list[str], env: dict[str, str]) -> tuple[int, str, str]:
+    """Run one ``ssh``/``sftp`` invocation under the pacing rules above.
+
+    Every contact with the server goes through here: :func:`_run_sftp`,
+    :func:`_run_ssh_exec` and :func:`_probe_exec`. The lock covers the
+    decision to wait, not the transfer: the upload progress probe can still
+    poll a live master while a long ``reput`` runs, but two callers never
+    start a contact inside the same gap.
+    """
+    key = _control_path(cred)
+    attempt = 0
+    while True:
+        with _pace_lock:
+            _ensure_master(cred)
+            _wait_turn(cred, reuse=_master_alive(cred))
+            _last_contact[key] = time.monotonic()
+        try:
+            code, out, err = _system(argv, env)
+        finally:
+            _last_contact[key] = time.monotonic()
+        throttled = code != 0 and any(m in err for m in _THROTTLE_MARKERS)
+        if not throttled:
+            if code == 0 or not any(m in err for m in _CONNECT_ERROR_MARKERS):
+                _authenticated.add(key)
+            return code, out, err
+        if key not in _authenticated or attempt >= _REFUSAL_RETRIES:
+            return code, out, err
+        delay = _backoff_delay(attempt, base=30.0, floor=_REFUSAL_MIN_WAIT)
+        osh.warning(
+            f"sftp: {_target(cred)} refused a login that worked before (throttling); "
+            f"waiting {delay:.0f} s before retry {attempt + 1}/{_REFUSAL_RETRIES}"
+        )
+        time.sleep(delay)
+        attempt += 1
 
 
 def _run_sftp(cred: dict, commands: list[str], *, extra_env: dict[str, str] | None = None) -> dict:
@@ -635,7 +816,7 @@ def _run_sftp(cred: dict, commands: list[str], *, extra_env: dict[str, str] | No
         with os.fdopen(fd, "w", encoding="utf-8") as fout:
             fout.write("\n".join(commands) + "\n")
         argv += ["-b", batch_path, _target(cred)]
-        code, out, err = _system(argv, env)
+        code, out, err = _remote(cred, argv, env)
         return {"code": code, "out": out, "err": err}
     finally:
         # The batch file may hold a remote path but never a secret; still, leave
@@ -677,6 +858,12 @@ def _raise_if_connect_error(err: str, cred: dict, context: str) -> None:
                 f"\tssh-keygen -lf known_hosts.{host}   (add -E md5 for an MD5 fingerprint)\n"
                 "compare the fingerprint with the one your host publishes, then point\n"
                 "sftp_known_hosts (or SFTP_KNOWN_HOSTS) at that file."
+            )
+        elif "Permission denied" in err:
+            hint = (
+                "\nHint: if the password is right, the server is probably throttling "
+                "logins after too many in a row. Wait several minutes before trying "
+                "again, and batch the work into fewer calls."
             )
         raise Exception(f"{context} failed to reach {target}.\nError:\n\t{err.strip()}{hint}")
 
@@ -917,7 +1104,7 @@ def _upload_resumable(
             last_err = res["err"]
             osh.warning(f"sftp upload attempt {attempt + 1} failed: {last_err.strip()}")
         if attempt < retries:
-            time.sleep(2**attempt)
+            time.sleep(_backoff_delay(attempt))
     else:
         if last_err:
             _raise_if_connect_error(last_err, cred, "upload")
@@ -1020,7 +1207,7 @@ def _download_resumable(
             last_err = res["err"]
             osh.warning(f"sftp download attempt {attempt + 1} failed: {last_err.strip()}")
         if attempt < retries:
-            time.sleep(2**attempt)
+            time.sleep(_backoff_delay(attempt))
     else:
         if last_err:
             _raise_if_connect_error(last_err, cred, "download")

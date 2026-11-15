@@ -315,7 +315,10 @@ def test_password_with_sshpass_uses_it(sftp, cred):
 # ---------------------------------------------------------------------------
 
 
-def test_remote_file_exists(sftp, cred):
+def test_remote_file_exists(sftp, cred, monkeypatch):
+    # No throttling retries here: a refusal after a success would be retried
+    # (see test_pacing.py); this test is about a refusal that stays refused.
+    monkeypatch.setattr(sftph_main, "_REFUSAL_RETRIES", 0)
     assert sftph.remote_file_exists("/folder/x.txt", cred) is True
     assert 'ls "/folder/x.txt"' in sftp.calls[0].batch
 
@@ -361,7 +364,7 @@ def test_list_dir_drops_batch_echo_and_full_paths(sftp, cred):
 def test_list_dir_decodes_octal_escaped_names(sftp, cred):
     # Gandi escapes every non-ASCII byte of a name as \ooo in `ls` output.
     sftp.push(out="Conditions_g\\303\\251n\\303\\251rales.pdf\nplain.txt\n")
-    assert sftph.list_dir("/srv", cred) == ["Conditions_générales.pdf", "plain.txt"]
+    assert sftph.list_dir("/srv/files", cred) == ["Conditions_générales.pdf", "plain.txt"]
 
 
 def test_download_creates_missing_parent(sftp, cred, tmp_path, monkeypatch):

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Pacing on every contact with the server** (`_remote`, the one door that
+  `_run_sftp`, `_run_ssh_exec` and `_probe_exec` now go through): a random
+  pause measured from the previous contact, 1.5 to 4 s when a fresh login is
+  needed, 0.3 to 1.5 s on a live shared connection. Random, never fixed.
+  Tunable with `SFTP_HELPER_PACE_CONNECT` / `SFTP_HELPER_PACE_REUSE`
+  (`"min,max"`, `"0,0"` disables).
+- **Backoff on a refusal after earlier success**: a host that refuses a login
+  that worked minutes before is throttling, so the call waits (exponential
+  backoff with full jitter, at least 60 s, `SFTP_HELPER_REFUSAL_RETRIES`, 3 by
+  default) instead of failing. A refusal on the very first login is reported
+  at once with a hint, since retrying a wrong password only feeds fail2ban.
+
+### Fixed
+
+- **Password auth reused no connection at all.** `ControlMaster=auto` leaves
+  its master as a child of `sshpass`, which takes it down at the end of every
+  call, so each call logged in again; a loop of small calls became a burst of
+  logins, and Gandi Simple Hosting started refusing the correct password after
+  a few of them. A detached master (`ssh -f -N`) is now opened after the first
+  successful call and every later call attaches to it. A failed attempt is not
+  retried for ten minutes.
+- The transfer retries slept a fixed `2**attempt`; they now use full jitter.
+- The path-guard test flagged a bare `"/srv"` in a test added by `69fb66d`.
+
 ## [3.6.3] - 2026-11-05
 
 ### Fixed
