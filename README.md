@@ -2,7 +2,7 @@
 
 [🇫🇷](https://github.com/warith-harchaoui/sftp-helper/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/sftp-helper/blob/main/README.md)
 
-[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/sftp-helper.svg)](https://pypi.org/project/sftp-helper/) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](#)
+[![CI](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/warith-harchaoui/sftp-helper/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/sftp-helper.svg)](https://pypi.org/project/sftp-helper/) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/warith-harchaoui/sftp-helper/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](#)
 
 `SFTP Helper` belongs to a collection of libraries called `AI Helpers`, built for developing Artificial Intelligence applications.
 
@@ -87,7 +87,7 @@ PyPI's release history and this repository's `CHANGELOG.md`, not from a marketin
 
 ## Installation
 
-**Prerequisites**: **Python 3.10–3.13** and **git**, cross-platform:
+**Prerequisites**: **Python 3.10 or later** and **git**, cross-platform:
 
 - 🍎 **macOS** ([Homebrew](https://brew.sh)): `brew install python git`
 - 🐧 **Ubuntu/Debian**: `sudo apt update && sudo apt install -y python3 python3-pip git`
