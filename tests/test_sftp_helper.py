@@ -358,6 +358,12 @@ def test_list_dir_drops_batch_echo_and_full_paths(sftp, cred):
     assert sftph.list_dir("/srv/uploads", cred) == ["a.txt", "sub"]
 
 
+def test_list_dir_decodes_octal_escaped_names(sftp, cred):
+    # Gandi escapes every non-ASCII byte of a name as \ooo in `ls` output.
+    sftp.push(out="Conditions_g\\303\\251n\\303\\251rales.pdf\nplain.txt\n")
+    assert sftph.list_dir("/srv", cred) == ["Conditions_générales.pdf", "plain.txt"]
+
+
 def test_download_creates_missing_parent(sftp, cred, tmp_path, monkeypatch):
     target = tmp_path / "deep" / "er" / "f.txt"
     seen = {}

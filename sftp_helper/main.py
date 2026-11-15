@@ -1304,13 +1304,34 @@ def _parse_ls_long_line(line: str, *, now: datetime | None = None) -> dict | Non
     # case. "/" can never be part of a real POSIX filename itself, so taking
     # the last path component is always safe and always correct, whichever
     # style the server used.
-    name = m.group("name").rsplit("/", 1)[-1]
+    name = _unescape_ls_name(m.group("name").rsplit("/", 1)[-1])
     return {
         "name": name,
         "is_dir": m.group("type") == "d",
         "size": int(m.group("size")),
         "mtime": candidate,
     }
+
+
+_LS_OCTAL_ESCAPE = re.compile(rb"\\([0-7]{3})")
+
+
+def _unescape_ls_name(name: str) -> str:
+    """Undo the octal escapes some servers put in ``ls`` names.
+
+    Gandi Simple Hosting answers ``Conditions_générales.pdf`` as
+    ``Conditions_g\\303\\251n\\303\\251rales.pdf``: each byte of the UTF-8 name
+    outside ASCII is written as a backslash and three octal digits. Kept as
+    is, the name matches no file on the server and every transfer of it fails.
+    Names without such escapes come back unchanged.
+    """
+    if "\\" not in name:
+        return name
+    raw = _LS_OCTAL_ESCAPE.sub(lambda m: bytes([int(m.group(1), 8)]), name.encode("utf-8"))
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return name
 
 
 def _sftp_ls_long(cred: dict, remote_path: str) -> list[dict]:
@@ -1395,7 +1416,7 @@ def _sftp_ls_flat(cred: dict, remote_path: str) -> list[str]:
         # names (seen on Gandi Simple Hosting). "/" cannot be part of a POSIX
         # filename, so the last component is the name either way, as in
         # _parse_ls_long_line.
-        names.append(ln.rsplit("/", 1)[-1])
+        names.append(_unescape_ls_name(ln.rsplit("/", 1)[-1]))
     return names
 
 
