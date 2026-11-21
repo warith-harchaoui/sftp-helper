@@ -8,6 +8,8 @@
 
 SFTP — the SSH File Transfer Protocol — moves files to and from a remote server over the same encrypted channel used for a remote terminal login (SSH).
 
+Drop a [⭐️](https://github.com/warith-harchaoui/sftp-helper) on GitHub if my help deserves it.
+
 No password is needed if you would rather not use one: a key pair proves who you are, the same way a physical key proves you are allowed into a building. The server only needs to know your key's public half.
 
 An AI pipeline that produces files — a rendered video, a trained model, a batch of transcripts — usually needs to hand them off somewhere else without a human clicking through a file manager. `sftp-helper` is that hand-off, done from Python, with the file-integrity checks a script running unattended needs and a human with a mouse does not: resumable transfers, content hashing, atomic writes.

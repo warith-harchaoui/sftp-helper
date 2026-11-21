@@ -88,6 +88,7 @@ def _mask(cred: dict) -> dict:
 
 
 @click.group(
+    epilog="⭐️ on GitHub: https://github.com/warith-harchaoui/sftp-helper",
     context_settings={"help_option_names": ["-h", "--help"], "max_content_width": 100},
 )
 # ``-V`` beside ``--version``, as the argparse door offered.
