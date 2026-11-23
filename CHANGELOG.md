@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-11-23
+
 ### Added
 
 - Every command line ends its `--help` on one line, after a blank one: `⭐️ on GitHub: https://github.com/warith-harchaoui/sftp-helper`. A test checks it for each console script. README.md and LISEZMOI.md carry one invitation to star the repository, right after the paragraph that says what the tool does.
+
+### Changed
+
+- Every module that logs declares `logger = logging.getLogger(__name__)` at the top and logs through it instead of `osh.info(...)`, so each record carries the module's dotted name rather than `os_helper`, and a CLI that configures its own package logger now sees them. Logging is still configured only in the entry point.
+- CODING.md and CONTRIBUTING.md state the logging rule (a module logger, configuration only in the entry point) and the modern typing syntax (`list[dict]`, `str | None`).
 
 ## [3.7.1] - 2026-11-15
 

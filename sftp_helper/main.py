@@ -35,6 +35,7 @@ Author:
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import platform
 import re
@@ -53,6 +54,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import os_helper as osh
+
+logger = logging.getLogger(__name__)
 
 # Diagnostics go through os-helper's logging surface (``osh.info`` /
 # ``osh.warning``) rather than the stdlib logger or bare ``print``. This is
@@ -581,7 +584,7 @@ def _system(argv: list[str], env: dict[str, str]) -> tuple[int, str, str]:
     current environment (used only to pass ``SSHPASS`` for password auth,
     keeping the secret out of the argv).
     """
-    osh.info("Executing: " + " ".join(shlex.quote(token) for token in argv))
+    logger.info("Executing: " + " ".join(shlex.quote(token) for token in argv))
     proc = subprocess.run(  # noqa: S603 — argv list, shell=False, no injection surface
         argv,
         capture_output=True,
@@ -634,7 +637,7 @@ def _env_range(name: str, default: tuple[float, float]) -> tuple[float, float]:
     try:
         low, high = (float(x) for x in raw.split(","))
     except ValueError:
-        osh.warning(f"{name}={raw!r} is not 'min,max' seconds; using {default}")
+        logger.warning(f"{name}={raw!r} is not 'min,max' seconds; using {default}")
         return default
     return (max(0.0, min(low, high)), max(0.0, low, high))
 
@@ -718,7 +721,7 @@ def _ensure_master(cred: dict) -> None:
         _master_failed_at.pop(key, None)
     else:
         _master_failed_at[key] = time.monotonic()
-        osh.warning(
+        logger.warning(
             f"sftp: could not open a shared connection, each call will log in: {err.strip()[-200:]}"
         )
 
@@ -764,7 +767,7 @@ def _remote(cred: dict, argv: list[str], env: dict[str, str]) -> tuple[int, str,
         if key not in _authenticated or attempt >= _REFUSAL_RETRIES:
             return code, out, err
         delay = _backoff_delay(attempt, base=30.0, floor=_REFUSAL_MIN_WAIT)
-        osh.warning(
+        logger.warning(
             f"sftp: {_target(cred)} refused a login that worked before (throttling); "
             f"waiting {delay:.0f} s before retry {attempt + 1}/{_REFUSAL_RETRIES}"
         )
@@ -1096,13 +1099,13 @@ def _upload_resumable(
             st = remote_stat(temp_remote, cred)
             if st and st["size"] == local_size:
                 break
-            osh.warning(
+            logger.warning(
                 f"sftp upload: size mismatch after attempt {attempt + 1} "
                 f"(local {local_size}, remote {st['size'] if st else 0}) — retrying"
             )
         else:
             last_err = res["err"]
-            osh.warning(f"sftp upload attempt {attempt + 1} failed: {last_err.strip()}")
+            logger.warning(f"sftp upload attempt {attempt + 1} failed: {last_err.strip()}")
         if attempt < retries:
             time.sleep(_backoff_delay(attempt))
     else:
@@ -1199,13 +1202,13 @@ def _download_resumable(
             have = os.path.getsize(part_path) if os.path.exists(part_path) else 0
             if remote_size is None or have == remote_size:
                 break
-            osh.warning(
+            logger.warning(
                 f"sftp download: size mismatch after attempt {attempt + 1} "
                 f"(local {have}, remote {remote_size}) — retrying"
             )
         else:
             last_err = res["err"]
-            osh.warning(f"sftp download attempt {attempt + 1} failed: {last_err.strip()}")
+            logger.warning(f"sftp download attempt {attempt + 1} failed: {last_err.strip()}")
         if attempt < retries:
             time.sleep(_backoff_delay(attempt))
     else:
@@ -1712,7 +1715,7 @@ def remote_file_exists(sftp_address: str, cred: dict) -> bool:
     remote_path = strip_sftp_path(sftp_address, cred)
     try:
         exists = _sftp_exists(cred, remote_path)
-        osh.info(f"SFTP file {sftp_address} existence check: {exists}")
+        logger.info(f"SFTP file {sftp_address} existence check: {exists}")
         return exists
     except Exception as err:
         raise Exception(
@@ -1781,7 +1784,7 @@ def list_dir(ftp_dir: str, cred: dict, *, recursive: bool = False) -> list[str]:
     remote_path = strip_sftp_path(ftp_dir, cred)
     try:
         entries = _sftp_list(cred, remote_path, recursive=recursive)
-        osh.info(f"SFTP list {ftp_dir}: {len(entries)} entrie(s)")
+        logger.info(f"SFTP list {ftp_dir}: {len(entries)} entrie(s)")
         return entries
     except Exception as err:
         raise Exception(f"Failed to list SFTP directory {ftp_dir}.\nError: {err}") from err
@@ -1873,7 +1876,7 @@ def list_dir_stat(ftp_dir: str, cred: dict) -> dict[str, dict]:
     remote_path = strip_sftp_path(ftp_dir, cred)
     try:
         tree = _sftp_walk_long(cred, remote_path)
-        osh.info(f"SFTP stat {ftp_dir}: {len(tree)} file(s)")
+        logger.info(f"SFTP stat {ftp_dir}: {len(tree)} file(s)")
         return tree
     except Exception as err:
         raise Exception(f"Failed to stat SFTP directory {ftp_dir}.\nError: {err}") from err
@@ -1904,7 +1907,7 @@ def make_remote_directory(ftp_directory: str, cred: dict) -> None:
 
     # Fast path: already there, skip the create round-trip entirely.
     if _sftp_isdir(cred, target):
-        osh.info(f"Directory already exists: {ftp_directory}")
+        logger.info(f"Directory already exists: {ftp_directory}")
         return
 
     # Build one batch that creates every level from the root down. Each mkdir is
@@ -1954,7 +1957,7 @@ def delete(sftp_address: str, cred: dict) -> bool:
         res = _run_sftp(cred, [f'rm "{remote_path}"'])
         err = res["err"]
         if res["code"] == 0 or any(m in err for m in _NOT_FOUND_MARKERS):
-            osh.info(f"SFTP file {sftp_address} successfully deleted (or already absent).")
+            logger.info(f"SFTP file {sftp_address} successfully deleted (or already absent).")
             return True
         _raise_if_connect_error(err, cred, "deletion")
         raise Exception(f"Failed to delete {sftp_address}:\n\t{err.strip()}")
@@ -2099,10 +2102,12 @@ def upload(
     if not overwrite:
         existing = remote_stat(sftp_address, cred)
         if existing is not None and (auto_named or existing["size"] == os.path.getsize(local_path)):
-            osh.info(f"'{sftp_address}' already present; skipping (pass overwrite=True to force)")
+            logger.info(
+                f"'{sftp_address}' already present; skipping (pass overwrite=True to force)"
+            )
             return sftp_address
         if existing is not None:
-            osh.warning(f"'{sftp_address}' exists but size differs from local; re-uploading")
+            logger.warning(f"'{sftp_address}' exists but size differs from local; re-uploading")
 
     remote_path = strip_sftp_path(sftp_address, cred)
     try:
@@ -2121,7 +2126,7 @@ def upload(
             resume=resume,
             progress=progress,
         )
-        osh.info(f"Upload successful: {local_path} -> {sftp_address}")
+        logger.info(f"Upload successful: {local_path} -> {sftp_address}")
         return sftp_address
     except Exception as err:
         raise Exception(
@@ -2180,11 +2185,11 @@ def _upload_folder(
     remote_root = strip_sftp_path(sftp_address, cred)
     files = [(abs_path, f"{remote_root}/{rel}") for abs_path, rel in _local_walk_files(local_dir)]
     if not files:
-        osh.warning(f"Upload skipped: '{local_dir}' has no files to upload.")
+        logger.warning(f"Upload skipped: '{local_dir}' has no files to upload.")
         return sftp_address
 
     upload_many(files, cred, retries=retries, overwrite=overwrite, resume=resume, progress=progress)
-    osh.info(f"Upload successful (folder): {local_dir} -> {sftp_address} ({len(files)} file(s))")
+    logger.info(f"Upload successful (folder): {local_dir} -> {sftp_address} ({len(files)} file(s))")
     return sftp_address
 
 
@@ -2287,7 +2292,7 @@ def _upload_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str, 
                         f"Remote tar extraction failed (exit {res['code']}): "
                         f"{res['err'].strip() or res['out'].strip()}"
                     )
-                osh.info(
+                logger.info(
                     f"Bulk archive upload: {len(entries)} file(s) via {os.path.basename(remote_tar)}"
                 )
 
@@ -2355,7 +2360,7 @@ def upload_many(
         try:
             return _upload_many_archive(files, cred)
         except Exception as exc:  # noqa: BLE001 — degrade to the always-available path
-            osh.warning(f"Bulk archive upload failed ({exc}); falling back to per-file upload.")
+            logger.warning(f"Bulk archive upload failed ({exc}); falling back to per-file upload.")
 
     results: dict[str, str] = {}
     for local_path, sftp_address in files:
@@ -2457,9 +2462,9 @@ def download(
     # `sftp_address` happens to be a directory.
     if not overwrite and osh.file_exists(local_path):
         if sha256 is None or _sha256_file(local_path) == sha256.lower():
-            osh.info(f"'{local_path}' already present; skipping (pass overwrite=True to force)")
+            logger.info(f"'{local_path}' already present; skipping (pass overwrite=True to force)")
             return local_path
-        osh.warning(f"'{local_path}' exists but sha256 mismatch; re-downloading")
+        logger.warning(f"'{local_path}' exists but sha256 mismatch; re-downloading")
 
     if remote_dir_exist(sftp_address, cred):
         if sha256 is not None:
@@ -2496,7 +2501,7 @@ def download(
         )
         # Assert the file actually materialized before reporting success.
         osh.checkfile(local_path, msg=f"Download failed for {sftp_address}")
-        osh.info(f"Download successful: {sftp_address} -> {local_path}")
+        logger.info(f"Download successful: {sftp_address} -> {local_path}")
         return local_path
     except ValueError:
         # A sha256 mismatch is a distinct, actionable failure (matches
@@ -2558,7 +2563,7 @@ def _download_folder(
     rel_paths = list_dir(sftp_address, cred, recursive=True)
     osh.make_directory(local_path)
     if not rel_paths:
-        osh.warning(f"Download skipped: '{sftp_address}' has no files to download.")
+        logger.warning(f"Download skipped: '{sftp_address}' has no files to download.")
         return local_path
 
     files = [
@@ -2567,7 +2572,9 @@ def _download_folder(
     download_many(
         files, cred, retries=retries, overwrite=overwrite, resume=resume, progress=progress
     )
-    osh.info(f"Download successful (folder): {sftp_address} -> {local_path} ({len(files)} file(s))")
+    logger.info(
+        f"Download successful (folder): {sftp_address} -> {local_path} ({len(files)} file(s))"
+    )
     return local_path
 
 
@@ -2661,7 +2668,7 @@ def _download_many_archive(files: list[tuple[str, str]], cred: dict) -> dict[str
                             osh.make_directory(parent)
                         osh.copyfile(os.path.join(extracted, arc), local_path)
 
-            osh.info(
+            logger.info(
                 f"Bulk archive download: {len(entries)} file(s) via {os.path.basename(remote_tar)}"
             )
 
@@ -2728,7 +2735,9 @@ def download_many(
         try:
             return _download_many_archive(files, cred)
         except Exception as exc:  # noqa: BLE001 — degrade to the always-available path
-            osh.warning(f"Bulk archive download failed ({exc}); falling back to per-file download.")
+            logger.warning(
+                f"Bulk archive download failed ({exc}); falling back to per-file download."
+            )
 
     results: dict[str, str] = {}
     for sftp_address, local_path in files:
@@ -2815,7 +2824,7 @@ def remote_tempfile(
         try:
             delete(sftp_address, cred)
         except Exception as cleanup_err:
-            osh.warning(
+            logger.warning(
                 f"remote_tempfile cleanup failed for {sftp_address} during error propagation: {cleanup_err}"
             )
         raise
@@ -2864,6 +2873,6 @@ def _remote_scratch_dir(cred: dict) -> Iterator[str]:
         # exception (if any) is already propagating out of the with-block.
         cleanup = _run_ssh_exec(cred, f"rm -rf {shlex.quote(path)}")
         if cleanup["code"] != 0:
-            osh.warning(
+            logger.warning(
                 f"Failed to remove remote scratch directory {path}: {cleanup['err'].strip()}"
             )
